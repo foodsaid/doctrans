@@ -31,7 +31,7 @@ def run(cfg, offline=False):
 
     log(f"[{cfg.name}] 解析 {pages}")
     md = export_images(cfg, parse_pdf(cfg, pages)) if pages else ""
-    blocks = to_blocks(md, cfg.chapter_words)
+    blocks = to_blocks(md, cfg.chapter_words, doc.get_toc() if cfg.headings == "bookmarks" else None)
     zh = translate(cfg, blocks, load_glossary(cfg.glossaries), log, offline=offline)
 
     # 被识别成表格的截图换回原图；页边小图标（[+]、[!] 等）不是标题，丢掉

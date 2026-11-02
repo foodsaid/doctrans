@@ -10,7 +10,8 @@ import fitz
 from .llm import ask_json
 from .translate import load_glossary
 
-DOTS_PAGES = re.compile(r"\s*\.{2,}[\s.]*([\d,\s–-]+)\s*$")
+DOTS_PAGES = re.compile(r"(?:\s*\.{2,}[\s.]*|\s{2,}|\u2002\s*)([\d,\s–-]+)\s*$")  # 「词 ..... 12」「词  12, 15」
+SEE_ALSO = re.compile(r"\.?\s+(?:See|siehe|voir)\b.*$")
 CONTINUED = re.compile(r"\s*\((?:Forts|cont|suite|cont\.)\.?\)")
 
 SYSTEM = """You are a terminologist for {domain} ({source_lang} → Simplified Chinese).
@@ -36,9 +37,9 @@ def extract_index(doc, first, last):
         for x, _, _ in lines:
             col_left[x >= mid] = min(col_left.get(x >= mid, x), x)
         for x, _, text in lines:
-            if re.fullmatch(r"\d+|[^\W\d_]|Index", text):
+            if re.fullmatch(r"\d+|[^\W\d_]|Index|Symbols|Symbole", text):
                 continue  # 页眉、页码、字母分组标题
-            label = CONTINUED.sub("", DOTS_PAGES.sub("", text)).strip()
+            label = SEE_ALSO.sub("", CONTINUED.sub("", DOTS_PAGES.sub("", text))).strip().rstrip(",")
             if x - col_left[x >= mid] < 5 and label and label not in terms:
                 terms.append(label)
     return terms

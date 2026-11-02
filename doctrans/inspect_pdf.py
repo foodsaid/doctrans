@@ -26,11 +26,17 @@ def detect_language(doc):
 
 
 def suggest(doc):
-    """返回 (页码范围, 索引页范围, 书签里出现的章节词)。没有书签时返回全书。"""
+    """返回 (页码范围, 索引页范围, 书签里出现的章节词, 标题定级方式)。没有书签时返回全书。"""
     toc_entries = doc.get_toc()
-    chapter_like = lambda t: re.match(r"^([^\W\d_]+) (?:\d+|[A-Z])\b", t.strip())
-    # 有的书把各章挂在「Contents」书签下面：取章节词最多的那一层，连同它上面的层一起展平
-    hits = collections.Counter(level for level, t, _ in toc_entries if chapter_like(t))
+    chapter_like = lambda t: re.match(r"^([^\W\d_]+) (\d+|[A-Z])\b", t.strip())
+    # 章节词的编号全书不重复；「Case 10」「Step 2」这类每章重新编号的不是章
+    numbers = collections.defaultdict(list)
+    for level, t, _ in toc_entries:
+        if m := chapter_like(t):
+            numbers[m.group(1)].append((level, m.group(2)))
+    chapter_words = {w for w, ns in numbers.items() if len(set(n for _, n in ns)) == len(ns)}
+    # 有的书把各章挂在「Contents」书签下面：取章节词所在的那一层，连同它上面的层一起展平
+    hits = collections.Counter(level for w in chapter_words for level, _ in numbers[w])
     depth = max(hits, key=hits.get) if hits else 1
     top = [(title.strip(), page) for level, title, page in toc_entries if level <= depth]
 
@@ -40,11 +46,19 @@ def suggest(doc):
 
     toc = next((bounds(k) for k, (t, _) in enumerate(top) if t.lower() in TOC_TITLES), None)
     index = next((bounds(k) for k, (t, _) in enumerate(top) if t.lower() in INDEX_TITLES), None)
-    if index:  # 索引后面常跟版权、服务页：截到最后一页页首还带索引标题的页
-        title = next(t for t, p in top if p == index[0] and t.lower() in INDEX_TITLES)
-        last = max((p for p in range(index[0], index[1] + 1) if title in doc[p - 1].get_text()[:40]), default=index[1])
+    if index:  # 索引后面常跟版权、广告页：截到最后一页「行尾是页码」的行仍占三成以上的页
+        last = index[0]
+        for p in range(index[0], index[1] + 1):
+            lines = [l for l in doc[p - 1].get_text().splitlines() if l.strip()]
+            if not lines or sum(bool(re.search(r"\d\s*$", l)) for l in lines) < len(lines) * 0.3:
+                break
+            last = p
         index = (index[0], last)
-    words = collections.Counter(m.group(1) for t, _ in top if (m := chapter_like(t)))
+    words = collections.Counter(m.group(1) for t, _ in top if (m := chapter_like(t)) and m.group(1) in chapter_words)
+    # 小节标题带编号（3.1、3.1.1）就按编号定级；不带编号的书改按书签定级
+    sections = [t for level, t, _ in toc_entries if level == depth + 1]
+    numbered = sum(bool(re.match(r"^\s*(?:\d+|[A-Z])(?:\.\d+)+\s", t)) for t in sections)
+    headings = "numbers" if not sections or numbered >= len(sections) / 2 else "bookmarks"
     end = index[0] - 1 if index else doc.page_count
     ranges = []
     if toc and toc[0] > 1:
@@ -53,7 +67,7 @@ def suggest(doc):
     if start <= end:
         ranges.append((start, end))
     pages = ",".join(f"{a}-{b}" if a != b else str(a) for a, b in ranges) or "all"
-    return pages, index, [w for w, n in words.most_common() if n >= 1]
+    return pages, index, [w for w, n in words.most_common() if n >= 1], headings
 
 
 def inspect(pdf, configs_dir):
@@ -61,7 +75,7 @@ def inspect(pdf, configs_dir):
     doc = fitz.open(pdf)
     with_text = sum(1 for p in doc if p.get_text().strip())
     lang = detect_language(doc)
-    pages, index, words = suggest(doc)
+    pages, index, words, headings = suggest(doc)
     rect = doc[doc.page_count // 2].rect
     _, default_words, figure_word = LANGS[lang]
     print(f"{pdf.name}: {doc.page_count} 页，有文字层 {with_text} 页，开本 {rect.width:.0f}×{rect.height:.0f}pt，"
@@ -90,6 +104,7 @@ glossaries = ["../glossary/{slug}/*.csv"]
 [structure]
 chapter_words = {json.dumps(words or default_words, ensure_ascii=False)}
 figure_word = "{figure_word}"
+headings = "{headings}"   # numbers：按「3.1」式编号定标题层级；bookmarks：按 PDF 书签定级（小节不带编号的书）
 
 [llm]
 model = "qwen3.8:27b"

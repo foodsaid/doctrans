@@ -15,6 +15,7 @@ class Config:
     glossaries: list[Path] = field(default_factory=list)
     chapter_words: list[str] = field(default_factory=lambda: ["Kapitel", "Anhang"])
     figure_word: str = "Abbildung"
+    headings: str = "numbers"  # numbers：按「3.1」式编号定标题层级；bookmarks：按 PDF 书签
     llm_url: str = "http://localhost:11434/v1/chat/completions"
     model: str = "qwen3.8:27b"
     batch: int = 8
@@ -42,7 +43,7 @@ def load(path):
     for key in ("pages", "source_lang", "domain"):
         if key in raw:
             setattr(cfg, key, raw[key])
-    for section, keys in ((s, ("chapter_words", "figure_word")),
+    for section, keys in ((s, ("chapter_words", "figure_word", "headings")),
                           (llm, ("model", "batch", "parallel")),
                           (render, ("bilingual", "font_regular", "font_bold"))):
         for key in keys:

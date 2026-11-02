@@ -37,7 +37,7 @@ def build_toc(body):
 
 
 def to_html(text):
-    html = markdown.markdown(text, extensions=["tables", "md_in_html", "toc"])
+    html = markdown.markdown(text, extensions=["tables", "md_in_html", "toc", "fenced_code"])
     return re.sub(r"<p>((?:图|表) \d+\.\d+\s*[：:])", r'<p class="cap">\1', html)
 
 

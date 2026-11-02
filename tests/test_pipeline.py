@@ -49,7 +49,7 @@ def test_translate_retries_bad_json_and_caches(book, monkeypatch):
 def test_inspect_suggests_ranges_and_writes_draft(tmp_path):
     pdf = tmp_path / "Mein Buch.pdf"
     make_pdf(pdf)
-    pages, index, words = suggest(fitz.open(pdf))
+    pages, index, words, _ = suggest(fitz.open(pdf))
     assert pages == "1,3-4" and index == (5, 5) and words == ["Kapitel"]
     out = inspect(pdf, tmp_path / "configs")
     cfg = config.load(out)
@@ -125,5 +125,48 @@ def test_suggest_nested_bookmarks_and_pages_after_index(tmp_path):
         doc.new_page().insert_text((60, 60), title or "text")
     doc.set_toc([[1, "Cover", 1], [1, "Contents", 2], [2, "Chapter 1: Start", 3],
                  [2, "Chapter 2: End", 5], [2, "Index", 6]])
-    pages, index, words = suggest(doc)
-    assert (pages, index, words) == ("1,3-5", (6, 7), ["Chapter"])
+    pages, index, words, headings = suggest(doc)
+    assert (pages, index, words, headings) == ("1,3-5", (6, 6), ["Chapter"], "numbers")
+
+
+OUTLINE = [[1, "Preface", 1], [1, "Chapter 1:Getting Started", 2], [2, "Basic ideas", 2], [2, "Summary", 3],
+           [1, "Chapter 2:Going Further", 4], [2, "Advanced ideas", 4], [3, "Case 1—First worked example", 4],
+           [2, "Summary", 5]]
+OUTLINE_MD = """## Preface
+
+Intro text.
+
+## Getting Started
+
+Some text.
+
+## Basic ideas
+
+[ 3 ]
+
+Chapter 1
+
+## Summary
+
+Getting Started
+
+## Going Further
+
+## Advanced ideas
+
+## Case 1—First worked
+
+example
+
+## A heading not in the bookmarks
+
+## Summary"""
+
+
+def test_structure_bookmark_headings():
+    blocks = to_blocks(OUTLINE_MD, ["Chapter"], OUTLINE)
+    assert [b for b in blocks if b.startswith("#")] == [
+        "# Preface", "# Chapter 1 Getting Started", "## Basic ideas", "## Summary",
+        "# Chapter 2 Going Further", "## Advanced ideas", "### Case 1—First worked example",
+        "#### A heading not in the bookmarks", "## Summary"]
+    assert "[ 3 ]" not in blocks and "Chapter 1" not in blocks and "Getting Started" not in blocks  # 页码、页眉

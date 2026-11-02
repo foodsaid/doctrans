@@ -47,12 +47,13 @@ def translate(cfg, blocks, glossary, log, offline=False):
     """返回与 blocks 一一对应的译文。offline=True 时不调模型，缺译文的段保留原文（只重排版用）。"""
     cache_path = cfg.output / "translate_cache.jsonl"
     cache = load_cache(cache_path)
-    todo = [i for i, b in enumerate(blocks) if not b.startswith("![") and block_key(b) not in cache]
+    is_code = lambda b: b.startswith("```")  # 代码原样保留，不送模型
+    todo = [i for i, b in enumerate(blocks) if not b.startswith("![") and not is_code(b) and block_key(b) not in cache]
     log(f"共 {len(blocks)} 段，缓存命中 {len(blocks) - len(todo)}，待翻译 {len(todo)}")
     if offline:
         if todo:
             log(f"警告: {len(todo)} 段没有译文，保留原文")
-        return [cache.get(block_key(b), b) for b in blocks]
+        return [b if is_code(b) else cache.get(block_key(b), b) for b in blocks]
 
     system_base = SYSTEM.format(source_lang=cfg.source_lang, figure_word=cfg.figure_word,
                                 domain=f" about {cfg.domain}" if cfg.domain else "")
@@ -88,4 +89,4 @@ def translate(cfg, blocks, glossary, log, offline=False):
                 cf.write(json.dumps({"k": block_key(blocks[i]), "zh": zh}, ensure_ascii=False) + "\n")
             cf.flush()
             log(f"翻译 {n}/{len(chunks)} 批")
-    return [cache.get(block_key(b), b) for b in blocks]
+    return [b if is_code(b) else cache.get(block_key(b), b) for b in blocks]

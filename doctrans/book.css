@@ -28,3 +28,6 @@ nav.toc .l1 { font-weight: bold; margin-top: 6pt; }
 nav.toc .l2 { margin-left: 16pt; font-size: 9pt; }
 .de { color: #777; font-size: 8.5pt; line-height: 1.5; margin-top: 10pt; margin-bottom: 2pt; border-left: 2px solid #ccc; padding-left: 6pt; }
 .de p, .de li { margin-left: 0; margin-bottom: 0; }
+pre { font-family: Consolas, "DejaVu Sans Mono", "Liberation Mono", monospace, DocFont; font-size: 7.5pt; line-height: 1.4;
+      white-space: pre-wrap; overflow-wrap: anywhere; background: #f6f6f6; border-left: 2px solid #ccc; padding: 4pt 6pt; margin: 4pt 0 8pt; }
+pre code { font-family: inherit; }
