@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+# 提交前防泄露检查（启用：git config core.hooksPath .githooks）
+# 1. 拒绝文档/缓存类文件和大文件
+# 2. 拒绝包含 .git/info/denylist 中任一字符串的内容（每行一个，如书名、作者、客户名；该文件不入库）
+set -euo pipefail
+fail=0
+while IFS= read -r -d '' f; do
+  case "$f" in
+    *.pdf|*.docx|*.xlsx|*.pptx|*.epub|*.jsonl|*.png|*.jpg|*.jpeg)
+      echo "拒绝: $f（文档/图片/缓存不入库）"; fail=1 ;;
+    *.csv|*.toml)
+      [[ "$f" == examples/* || "$f" == pyproject.toml ]] || { echo "拒绝: $f（配置和术语表只允许放 examples/）"; fail=1; } ;;
+  esac
+  size=$(git cat-file -s ":$f" 2>/dev/null || echo 0)
+  if [ "$size" -gt 300000 ]; then echo "拒绝: $f（${size} 字节，超过 300KB）"; fail=1; fi
+done < <(git diff --cached --name-only --diff-filter=ACMR -z)
+
+deny="$(git rev-parse --git-dir)/info/denylist"
+if [ -s "$deny" ]; then
+  hits=$(git grep --cached -n -i -F -f "$deny" -- . ':!LICENSE' 2>/dev/null || true)
+  if [ -n "$hits" ]; then echo "拒绝: 暂存内容命中 denylist:"; echo "$hits" | head -20; fail=1; fi
+fi
+exit $fail

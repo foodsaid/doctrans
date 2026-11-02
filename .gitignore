@@ -1,0 +1,18 @@
+# 白名单：默认忽略一切，只放行代码和文档。书、配置、术语表、输出等数据放在仓库外的工作区。
+*
+!.gitignore
+!README.md
+!LICENSE
+!pyproject.toml
+!.githooks/
+!.githooks/*
+!doctrans/
+!doctrans/*.py
+!doctrans/*.css
+!tests/
+!tests/*.py
+!examples/
+!examples/*.toml
+!examples/*.csv
+!skill/
+!skill/*.md

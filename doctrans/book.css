@@ -1,0 +1,30 @@
+/* 版式照原书：开本取原 PDF 页面尺寸、图片靠左按原尺寸、正文相对图片缩进、页眉显示章名。
+   $font_faces 由 render.py 填入；粗体必须单独声明粗体字体文件，否则 WeasyPrint 的粗体会失效。 */
+$font_faces
+@page { size: ${page_width}pt ${page_height}pt; margin: 48pt 34pt 44pt;
+  @top-left { content: string(chapter); font-size: 7.5pt; color: #555; }
+  @bottom-center { content: counter(page); font-size: 8pt; color: #555; } }
+body { font-family: DocFont, "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", "Source Han Sans SC", "WenQuanYi Zen Hei", sans-serif;
+  font-size: 9.5pt; line-height: 1.65; color: #1a1a1a; text-align: left; }
+p, ul, ol, table, h3, h4, .de { margin-left: 34pt; }
+p { margin-top: 0; margin-bottom: 5pt; }
+ul, ol { padding-left: 14pt; }
+li { margin-bottom: 3pt; }
+h1 { font-size: 17pt; page-break-before: always; string-set: chapter content(); margin: 0 0 22pt; padding-bottom: 6pt; border-bottom: 1.5pt solid #1a1a1a; }
+h2 { font-size: 13pt; margin: 20pt 0 8pt; page-break-after: avoid; }
+h3 { font-size: 11pt; margin-top: 14pt; margin-bottom: 6pt; page-break-after: avoid; }
+h4 { font-size: 9.5pt; margin-top: 10pt; margin-bottom: 3pt; page-break-after: avoid; bookmark-level: none; }
+.fig { margin: 10pt 0 4pt; page-break-inside: avoid; page-break-after: avoid; }
+.fig img { max-width: 100%; }
+p.cap { font-size: 8.5pt; color: #333; margin-bottom: 12pt; }
+table { border-collapse: collapse; font-size: 8pt; text-align: left; margin-left: 0; width: 100%; }
+th, td { border: 0.5pt solid #999; padding: 2pt 3pt; vertical-align: top; overflow-wrap: anywhere; }
+nav.toc { page-break-before: always; page-break-after: always; }
+.front { page-break-before: always; }
+nav.toc h1 { page-break-before: avoid; }
+nav.toc a { color: #1a1a1a; text-decoration: none; }
+nav.toc a::after { content: leader('.') target-counter(attr(href), page); }
+nav.toc .l1 { font-weight: bold; margin-top: 6pt; }
+nav.toc .l2 { margin-left: 16pt; font-size: 9pt; }
+.de { color: #777; font-size: 8.5pt; line-height: 1.5; margin-top: 10pt; margin-bottom: 2pt; border-left: 2px solid #ccc; padding-left: 6pt; }
+.de p, .de li { margin-left: 0; margin-bottom: 0; }

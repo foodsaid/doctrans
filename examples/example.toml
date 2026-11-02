@@ -1,0 +1,30 @@
+# doctrans 文档配置示例。相对路径以本文件所在目录为基准。
+# 建议目录结构（数据工作区与代码仓库分开）：
+#   ~/doctrans-data/inbox/      原文 PDF
+#   ~/doctrans-data/configs/    每份文档一个配置（doctrans inspect 生成草稿）
+#   ~/doctrans-data/glossary/   术语表
+#   ~/doctrans-data/work/       输出
+input = "../inbox/manual.pdf"
+output = "../work/manual"
+pages = "1-4,19-1034"      # 逗号分隔多个范围；跳过原目录（会重新生成）和索引（拿去做术语表）
+source_lang = "German"     # 写进提示词
+domain = "ERP software"    # 书的主题，帮助模型选用正确术语
+glossaries = ["../glossary/manual/*.csv", "../glossary/common/*.csv"]  # 列在前面的优先
+
+[structure]
+chapter_words = ["Kapitel", "Anhang"]   # 章标题的词，如「Kapitel 7 …」「Anhang A …」
+figure_word = "Abbildung"                # 原文图注词，如「Abbildung 6.44: …」
+
+[llm]
+url = "http://localhost:11434/v1/chat/completions"   # 任何 OpenAI 兼容接口
+model = "qwen3.8:27b"
+batch = 8        # 每次请求的段数
+parallel = 4     # 并发请求数
+
+[mineru]
+bin = "mineru"   # 或独立虚拟环境里的绝对路径
+
+[render]
+bilingual = true     # 同时输出逐段对照版 bi.pdf
+font_regular = ""    # 留空自动探测（WSL/Windows 用微软雅黑，其它平台按字体族名回退）
+font_bold = ""
