@@ -76,3 +76,54 @@ def test_end_to_end_with_fake_model(book, monkeypatch):
     monkeypatch.setattr(translate, "ask_json", lambda *a, **k: pytest.fail("render 不应调用模型"))
     pipeline.run(cfg, offline=True)
     assert "待翻译 0" in (out / "run.log").read_text(encoding="utf-8")
+
+
+ENGLISH_MD = """<!-- page 20 of 99 -->
+
+## Chapter 3
+
+## Stock Basics
+
+The warehouse keeps stock in several bins, and the count runs
+
+<!-- page 21 of 99 -->
+
+21
+
+Stock Basics
+
+every night.
+
+## The report shows two values:
+
+## ▪ Quantity
+
+▪ Plain item
+
+– Nested item
+
+<!-- page 22 of 99 -->
+
+▪ Item after page break"""
+
+
+def test_structure_english_layout():
+    from doctrans.structure import listify
+    blocks = to_blocks(ENGLISH_MD, ["Chapter", "Appendix"])
+    assert blocks[0] == "# Chapter 3 Stock Basics"
+    assert "Stock Basics" not in blocks                                   # 只印章名的页眉丢弃
+    assert "The warehouse keeps stock in several bins, and the count runs every night." in blocks
+    assert "The report shows two values:" in blocks                       # 冒号结尾的不是标题
+    assert "- **Quantity**" in blocks
+    assert "▪ Item after page break" in blocks                            # 新列表项不接到上一段
+    assert [listify(b) for b in blocks[-3:]] == ["- Plain item", "    - Nested item", "- Item after page break"]
+
+
+def test_suggest_nested_bookmarks_and_pages_after_index(tmp_path):
+    doc = fitz.open()
+    for title in ["", "Contents", "Chapter 1 Start", "", "Chapter 2 End", "Index", "Index", "Service"]:
+        doc.new_page().insert_text((60, 60), title or "text")
+    doc.set_toc([[1, "Cover", 1], [1, "Contents", 2], [2, "Chapter 1: Start", 3],
+                 [2, "Chapter 2: End", 5], [2, "Index", 6]])
+    pages, index, words = suggest(doc)
+    assert (pages, index, words) == ("1,3-5", (6, 7), ["Chapter"])

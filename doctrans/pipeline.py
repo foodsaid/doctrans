@@ -7,7 +7,7 @@ import fitz
 from . import figures, qa
 from .parse import export_images, parse_pdf
 from .render import render
-from .structure import chapter_pattern, to_blocks
+from .structure import chapter_pattern, listify, to_blocks
 from .translate import load_glossary, translate
 
 
@@ -46,7 +46,7 @@ def run(cfg, offline=False):
             if fig:
                 src = cn = fig
         pairs.append((src, cn))
-    blocks, zh = [p[0] for p in pairs], [p[1] for p in pairs]
+    blocks, zh = [listify(p[0]) for p in pairs], [listify(p[1]) for p in pairs]
     (cfg.output / "zh.md").write_text("\n\n".join(zh) + "\n", encoding="utf-8")
 
     log(f"[{cfg.name}] 排版")

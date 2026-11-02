@@ -27,11 +27,24 @@ def detect_language(doc):
 
 def suggest(doc):
     """返回 (页码范围, 索引页范围, 书签里出现的章节词)。没有书签时返回全书。"""
-    top = [(title.strip(), page) for level, title, page in doc.get_toc() if level == 1]
-    bounds = lambda k: (top[k][1], (top[k + 1][1] - 1) if k + 1 < len(top) else doc.page_count)
+    toc_entries = doc.get_toc()
+    chapter_like = lambda t: re.match(r"^([^\W\d_]+) (?:\d+|[A-Z])\b", t.strip())
+    # 有的书把各章挂在「Contents」书签下面：取章节词最多的那一层，连同它上面的层一起展平
+    hits = collections.Counter(level for level, t, _ in toc_entries if chapter_like(t))
+    depth = max(hits, key=hits.get) if hits else 1
+    top = [(title.strip(), page) for level, title, page in toc_entries if level <= depth]
+
+    def bounds(k):
+        later = [p for _, p in top[k + 1:] if p > top[k][1]]
+        return top[k][1], (later[0] - 1) if later else doc.page_count
+
     toc = next((bounds(k) for k, (t, _) in enumerate(top) if t.lower() in TOC_TITLES), None)
     index = next((bounds(k) for k, (t, _) in enumerate(top) if t.lower() in INDEX_TITLES), None)
-    words = collections.Counter(m.group(1) for t, _ in top if (m := re.match(r"^([^\W\d_]+) (?:\d+|[A-Z])\b", t)))
+    if index:  # 索引后面常跟版权、服务页：截到最后一页页首还带索引标题的页
+        title = next(t for t, p in top if p == index[0] and t.lower() in INDEX_TITLES)
+        last = max((p for p in range(index[0], index[1] + 1) if title in doc[p - 1].get_text()[:40]), default=index[1])
+        index = (index[0], last)
+    words = collections.Counter(m.group(1) for t, _ in top if (m := chapter_like(t)))
     end = index[0] - 1 if index else doc.page_count
     ranges = []
     if toc and toc[0] > 1:
