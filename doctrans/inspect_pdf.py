@@ -15,7 +15,7 @@ LANGS = {  # 语言: (常见虚词, 章节词, 图注词)
     "Italian": ({"il", "la", "che", "e", "di", "è", "per", "con", "non"}, ["Capitolo", "Appendice"], "Figura"),
     "Dutch": ({"de", "het", "en", "van", "een", "is", "voor", "met", "niet"}, ["Hoofdstuk", "Bijlage"], "Afbeelding"),
 }
-TOC_TITLES = {"inhalt", "inhaltsverzeichnis", "contents", "table of contents", "sommaire", "índice", "indice", "inhoud"}
+TOC_TITLES = {"content", "inhalt", "inhaltsverzeichnis", "contents", "table of contents", "sommaire", "índice", "indice", "inhoud"}
 INDEX_TITLES = {"index", "register", "stichwortverzeichnis", "indice analitico", "índice alfabético"}
 
 
@@ -37,6 +37,10 @@ def suggest(doc):
     chapter_words = {w for w, ns in numbers.items() if len(set(n for _, n in ns)) == len(ns)}
     # 有的书把各章挂在「Contents」书签下面：取章节词所在的那一层，连同它上面的层一起展平
     hits = collections.Counter(level for w in chapter_words for level, _ in numbers[w])
+    bare = False
+    if not hits:  # 章名直接以编号开头（「5 Installing …」）、没有章节词：取这种书签最多的一层
+        hits = collections.Counter(level for level, t, _ in toc_entries if re.match(r"^\d{1,2} \S", t.strip()))
+        bare = bool(hits)
     depth = max(hits, key=hits.get) if hits else 1
     top = [(title.strip(), page) for level, title, page in toc_entries if level <= depth]
 
@@ -58,7 +62,7 @@ def suggest(doc):
     # 小节标题带编号（3.1、3.1.1）就按编号定级；不带编号的书改按书签定级
     sections = [t for level, t, _ in toc_entries if level == depth + 1]
     numbered = sum(bool(re.match(r"^\s*(?:\d+|[A-Z])(?:\.\d+)+\s", t)) for t in sections)
-    headings = "numbers" if not sections or numbered >= len(sections) / 2 else "bookmarks"
+    headings = "numbers" if not bare and (not sections or numbered >= len(sections) / 2) else "bookmarks"
     end = index[0] - 1 if index else doc.page_count
     ranges = []
     if toc and toc[0] > 1:
@@ -67,7 +71,9 @@ def suggest(doc):
     if start <= end:
         ranges.append((start, end))
     pages = ",".join(f"{a}-{b}" if a != b else str(a) for a, b in ranges) or "all"
-    return pages, index, [w for w, n in words.most_common() if n >= 1], headings
+    # 章节词：[] 表示章名直接以编号开头；None 表示没识别出来，用该语言的默认词
+    found = [w for w, n in words.most_common() if n >= 1]
+    return pages, index, [] if bare else (found or None), headings
 
 
 def inspect(pdf, configs_dir):
@@ -102,7 +108,7 @@ domain = ""            # 书的主题，如 "ERP software"，写进提示词帮�
 glossaries = ["../glossary/{slug}/*.csv"]
 
 [structure]
-chapter_words = {json.dumps(words or default_words, ensure_ascii=False)}
+chapter_words = {json.dumps(default_words if words is None else words, ensure_ascii=False)}
 figure_word = "{figure_word}"
 headings = "{headings}"   # numbers：按「3.1」式编号定标题层级；bookmarks：按 PDF 书签定级（小节不带编号的书）
 

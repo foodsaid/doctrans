@@ -6,7 +6,11 @@ IMAGE = re.compile(r"^!\[[^\]]*\]\((doc:[^)]+)\)$")
 
 
 def check_local_only(mineru):
-    """MinerU 支持远程解析和遥测。书稿不能外传：本地模式未设成 managed 或遥测未关时拒绝运行。"""
+    """MinerU 支持远程解析和遥测。书稿不能外传：本地模式未设成 managed 或遥测未关时拒绝运行。
+    本地 server 空闲会自动退出，它不在时连配置都读不出来，所以先确保它在运行。"""
+    status = subprocess.run([mineru, "server", "status"], capture_output=True, text=True)
+    if "not running" in status.stdout + status.stderr:
+        subprocess.run([mineru, "server", "start"], check=True, capture_output=True)
     mode = subprocess.run([mineru, "config", "get", "parse_server.local.mode"], capture_output=True, text=True).stdout
     tele = subprocess.run([mineru, "telemetry", "status"], capture_output=True, text=True).stdout
     problems = []
@@ -25,10 +29,6 @@ def parse_pdf(cfg, pages):
         md_path = cfg.output / f"source_{rng}.md"
         if not md_path.exists():
             check_local_only(cfg.mineru)
-            # 本地 server 空闲会自动退出，解析前确保它在运行
-            status = subprocess.run([cfg.mineru, "server", "status"], capture_output=True, text=True)
-            if "not running" in status.stdout + status.stderr:
-                subprocess.run([cfg.mineru, "server", "start"], check=True)
             subprocess.run(
                 [cfg.mineru, "parse", cfg.input, "--pages", rng, "--tier", "standard", "--wait", "14400", "-o", md_path],
                 check=True,

@@ -6,6 +6,8 @@ import fitz
 
 CJK = re.compile(r"[一-鿿]")
 LATIN = re.compile(r"[A-Za-zÀ-ÿ]")
+NOT_PROSE = re.compile(r"\]\([^)]*\)|https?://\S+|`[^`]*`|```.*?```|「[^」]*」|&lt;.*?&gt;|[A-Za-z]:\\\S+|\S+\.(?:exe|xml|ini|dll)\b",
+                       re.S)
 
 
 def untranslated(blocks, zh):
@@ -14,7 +16,8 @@ def untranslated(blocks, zh):
     for src, cn in zip(blocks, zh):
         if cn.startswith(("![", "<", "#", "```", "|", "[")) or "<table" in cn:
             continue  # 图片、表格、代码、链接里的原文多是界面数据，不算漏译
-        if len(LATIN.findall(cn)) >= 40 and len(CJK.findall(cn)) < len(cn) * 0.1:
+        prose = NOT_PROSE.sub(" ", cn)  # 链接、网址、路径、代码、界面标签本来就保留原文
+        if len(LATIN.findall(prose)) >= 40 and len(CJK.findall(prose)) < len(prose) * 0.1:
             out.append(cn)
     return out
 

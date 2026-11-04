@@ -2,6 +2,7 @@
 MinerU 给的 # 层级不可靠（几乎全是 ##，页眉也被标成标题），所以只信编号：
 「<章词> N 标题」→ h1，「3.1 标题」→ h2，「3.1.1」→ h3；同一编号只有第一次出现是标题，其余是页眉。
 小节不带编号的书改用 PDF 书签定级（OutlineNormalizer）。"""
+import collections
 import re
 
 PAGE_MARK = re.compile(r"^<!-- page \d+ of \d+ -->$")
@@ -110,6 +111,15 @@ class OutlineNormalizer:
     def __init__(self, toc, chapter_words):
         chapter = re.compile(rf"^((?:{'|'.join(map(re.escape, chapter_words))}) (?:\d+|[A-Z]))\s*[:.—–-]?\s*(.*)$")
         self.queue, self.labels = [], set()
+        toc = list(toc)
+        self.roots = set()  # 被去掉的根书签（文档标题）：「文档标题 章名」式页脚要丢掉
+        while toc and sum(level == toc[0][0] for level, *_ in toc) == 1:
+            # 顶层只有一个书签（整份文档的标题）：去掉它，下面各层上提一级
+            top = toc[0][0]
+            self.roots.add(title_key(toc[0][1]))
+            toc = [(level - 1 if level > top else level, t, p) for level, t, p in toc[1:]]
+        self.chapters = {k for level, t, _ in toc if level == 1
+                         for k in (title_key(t), re.sub(r"^\d+ ", "", title_key(t)))}  # 页脚里的章名常不带编号
         for level, title, _ in toc:
             m = chapter.match(title.strip())
             if m and m.group(2):
@@ -130,6 +140,8 @@ class OutlineNormalizer:
             return None
         if key in self.labels or (not block.startswith("#") and key in self.passed):
             return None  # 「Chapter 1」或章名式页眉
+        if any(key == r or key.startswith(r + " ") and key[len(r) + 1:] in self.chapters for r in self.roots):
+            return None  # 「文档标题 章名」式页脚
         if block.startswith("#") or len(block) < 120:
             for j in range(self.pos, min(self.pos + self.LOOKAHEAD, len(self.queue))):
                 level, k, title = self.queue[j]
@@ -166,6 +178,11 @@ def split_blocks(md):
 def to_blocks(md, chapter_words, outline=None):
     """outline 给出 PDF 书签（[(层级, 标题, 页)]）时按书签定标题层级，否则按编号。"""
     raw = split_blocks(md)
+    # 一半以上的页面都出现的短块是页眉页脚里的版式文字（如密级标记「PUBLIC」）
+    pages = sum(bool(PAGE_MARK.match(b)) for b in raw)
+    counts = collections.Counter(b for b in raw if len(b) <= 40 and not b.startswith(LIST_START))
+    boiler = {b for b, n in counts.items() if pages >= 20 and n >= pages / 2}
+    raw = [b for b in raw if b not in boiler]
     normalize = OutlineNormalizer(outline, chapter_words) if outline else Normalizer(chapter_words)
     blocks, after_page_break = [], False
     for block in raw:
