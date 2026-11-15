@@ -59,7 +59,7 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
       - name: 按锁定清单安装
-        run: uv venv .venv && uv pip install --python .venv/bin/python -r requirements-dev.txt && uv pip install --python .venv/bin/python --no-deps -e .
+        run: uv venv --clear .venv && uv pip install --python .venv/bin/python -r requirements-dev.txt && uv pip install --python .venv/bin/python --no-deps -e .
       - name: 测试（含合成文档的端到端流程、成品质检、隐私守护）
         run: .venv/bin/pytest -q
 
@@ -73,7 +73,7 @@ jobs:
       - uses: astral-sh/setup-uv@v5
         with:
           python-version: "3.12"
-      - run: uv venv .venv && uv pip install --python .venv/bin/python -r requirements-dev.txt && uv pip install --python .venv/bin/python --no-deps -e .
+      - run: uv venv --clear .venv && uv pip install --python .venv/bin/python -r requirements-dev.txt && uv pip install --python .venv/bin/python --no-deps -e .
       - run: .venv/bin/pytest -q
         env:
           DYLD_FALLBACK_LIBRARY_PATH: /opt/homebrew/lib
@@ -88,7 +88,7 @@ jobs:
       - uses: astral-sh/setup-uv@v5
         with:
           python-version: "3.12"
-      - run: uv venv .venv; uv pip install --python .venv\Scripts\python.exe -r requirements-dev.txt; uv pip install --python .venv\Scripts\python.exe --no-deps -e .
+      - run: uv venv --clear .venv; uv pip install --python .venv\Scripts\python.exe -r requirements-dev.txt; uv pip install --python .venv\Scripts\python.exe --no-deps -e .
       - run: .venv\Scripts\pytest.exe -q
         env:
           WEASYPRINT_DLL_DIRECTORIES: C:\msys64\mingw64\bin
@@ -105,5 +105,5 @@ jobs:
         with:
           python-version: "3.13"
       - name: 不用锁定清单，装允许范围内的最新版
-        run: uv venv .venv && uv pip install --python .venv/bin/python -e ".[test]" && uv pip list --python .venv/bin/python
+        run: uv venv --clear .venv && uv pip install --python .venv/bin/python -e ".[test]" && uv pip list --python .venv/bin/python
       - run: .venv/bin/pytest -q
