@@ -14,7 +14,7 @@ fonttools==4.68.0
     # via weasyprint
 iniconfig==2.3.1
     # via pytest
-markdown==3.11.2
+markdown==3.11.3
     # via
     #   -c /tmp/claude-1000/-home-b-pdf/fbc98384-7045-48d3-af79-b038880e8f6b/scratchpad/tested.txt
     #   doctrans (pyproject.toml)
@@ -30,7 +30,7 @@ pydyf==0.13.0
     # via weasyprint
 pygments==2.21.0
     # via pytest
-pymupdf==1.25.2
+pymupdf==1.28.2
     # via
     #   -c /tmp/claude-1000/-home-b-pdf/fbc98384-7045-48d3-af79-b038880e8f6b/scratchpad/tested.txt
     #   doctrans (pyproject.toml)
