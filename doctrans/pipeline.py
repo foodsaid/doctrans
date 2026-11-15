@@ -2,7 +2,7 @@
 import re
 import time
 
-import fitz
+import pymupdf as fitz
 
 from . import figures, qa
 from .parse import export_images, parse_pdf

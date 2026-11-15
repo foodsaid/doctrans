@@ -2,16 +2,21 @@
 import re
 import subprocess
 import time
+from pathlib import Path
 
 IMAGE = re.compile(r"^!\[[^\]]*\]\((doc:[^)]+)\)$")
 
 
 def check_local_only(mineru):
     """MinerU 支持远程解析和遥测。书稿不能外传：本地模式未设成 managed 或遥测未关时拒绝运行。
-    本地 server 空闲会自动退出，它不在时连配置都读不出来，所以先确保它在运行。"""
+    本地 server 空闲会自动退出，它不在时连配置都读不出来，所以先确保它在运行。
+    server 会把解析过的文件存一份副本到「启动它时的当前目录/blobs」：固定从 ~/.mineru 启动，
+    免得文档副本散落到工作目录甚至代码仓库里。"""
     status = subprocess.run([mineru, "server", "status"], capture_output=True, text=True)
     if "not running" in status.stdout + status.stderr:
-        subprocess.run([mineru, "server", "start"], check=True, capture_output=True)
+        home = Path.home() / ".mineru"
+        home.mkdir(exist_ok=True)
+        subprocess.run([mineru, "server", "start"], check=True, capture_output=True, cwd=home)
     mode = subprocess.run([mineru, "config", "get", "parse_server.local.mode"], capture_output=True, text=True).stdout
     tele = subprocess.run([mineru, "telemetry", "status"], capture_output=True, text=True).stdout
     problems = []

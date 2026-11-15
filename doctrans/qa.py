@@ -2,7 +2,7 @@
 import collections
 import re
 
-import fitz
+import pymupdf as fitz
 
 CJK = re.compile(r"[一-鿿]")
 LATIN = re.compile(r"[A-Za-zÀ-ÿ]")

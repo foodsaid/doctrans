@@ -2,7 +2,7 @@
 import random
 import re
 
-import fitz
+import pymupdf as fitz
 import pytest
 
 W, H = 477, 680

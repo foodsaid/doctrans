@@ -5,8 +5,8 @@ description: 用本地模型把长篇外文 PDF（书、手册）批量翻译成
 
 # 长文档本地翻译（doctrans）
 
-工具仓库在 `/home/b/doctrans`（命令 `/home/b/doctrans/.venv/bin/doctrans`），用法见其 README，排查和升级见 `docs/manual.md`。
-数据放在仓库外的工作区（如 `/home/b/pdf/data`）：inbox/、configs/、glossary/、work/。**任何数据都不要放进仓库。**
+工具仓库在 `/home/b/doctrans`（已装成命令 `doctrans`，可编辑安装，运行的就是仓库里的当前代码），用法见其 README，排查和升级见 `docs/manual.md`。
+数据放在仓库外的工作区（本机是 `~/doctrans-data`）：inbox/、configs/、glossary/、work/。**任何数据都不要放进仓库。**
 
 ## 流程
 

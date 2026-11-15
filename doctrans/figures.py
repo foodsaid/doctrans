@@ -2,7 +2,7 @@
 而且会把界面截图误识别成 HTML 表格（宽表右侧数据被裁掉）。"""
 import re
 
-import fitz
+import pymupdf as fitz
 
 MINERU_DPI = 200
 

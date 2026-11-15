@@ -302,6 +302,7 @@ bilingual = true   # 是否另出对照版
 | 中文术语表在 Excel 里乱码 | CSV 没带 BOM | 另存为"UTF-8 带 BOM" |
 | 标题层级乱 | `headings` 模式不对，或书签不全 | 换模式；看 `inspect` 输出的书签条数 |
 | 一大片正文变成等宽字体 | 代码围栏没闭合 | 质检报告"残留标记"会报出页码；把那一页的情况反馈给维护者 |
+| 工作目录里冒出 `blobs/` 文件夹 | MinerU 服务把解析过的文件副本存在"启动它时的当前目录" | doctrans 会从 `~/.mineru` 启动服务，副本集中在 `~/.mineru/blobs`。手动启动服务时先 `cd ~/.mineru`。散落的 `blobs/` 可以删除 |
 | 进程被误杀 | 用了 `pkill -f doctrans` | 它会把当前终端一起杀掉。用 `pgrep -f "doctrans run"` 找到进程号再 `kill` |
 
 ## 7. 升级

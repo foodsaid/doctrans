@@ -6,6 +6,8 @@ set -euo pipefail
 fail=0
 while IFS= read -r -d '' f; do
   case "$f" in
+    blobs/*|*/blobs/*)
+      echo "拒绝: $f（MinerU 的文档副本目录）"; fail=1 ;;
     *.pdf|*.docx|*.xlsx|*.pptx|*.epub|*.jsonl|*.png|*.jpg|*.jpeg)
       echo "拒绝: $f（文档/图片/缓存不入库）"; fail=1 ;;
     *.csv|*.toml)

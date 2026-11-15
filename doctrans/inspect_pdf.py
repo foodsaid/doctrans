@@ -5,7 +5,7 @@ import os
 import re
 from pathlib import Path
 
-import fitz
+import pymupdf as fitz
 
 LANGS = {  # 语言: (常见虚词, 章节词, 图注词)
     "German": ({"der", "die", "und", "nicht", "mit", "für", "ist", "werden", "sie"}, ["Kapitel", "Anhang"], "Abbildung"),

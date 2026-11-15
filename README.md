@@ -56,7 +56,7 @@ uv venv --python 3.12 .venv && uv pip install --python .venv/bin/python -e ".[te
 - **Model server**: Ollama on Windows, macOS or Linux. A 27B-class model is recommended (about 16 GB of VRAM); smaller models work with lower quality. Thinking mode is switched off by doctrans.
 - **Fonts**: Microsoft YaHei on WSL/Windows, PingFang or Noto Sans CJK on macOS/Linux, or set font files in the config.
 - macOS: `brew install pango` first (needed by WeasyPrint).
-- Native Windows: the test suite passes in CI, but WSL2 is the recommended setup.
+- Platform status: Linux and WSL2 are used daily. On macOS and native Windows the test suite passes in CI; end-to-end runs on real machines are being verified. On Windows, WSL2 is the recommended setup.
 
 Check the environment: `doctrans doctor configs/xxx.toml`
 

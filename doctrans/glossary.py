@@ -5,7 +5,7 @@ import json
 import re
 from concurrent.futures import ThreadPoolExecutor
 
-import fitz
+import pymupdf as fitz
 
 from .llm import ask_json
 from .translate import load_glossary

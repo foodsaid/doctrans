@@ -47,6 +47,22 @@ def test_privacy_check_refuses_remote_mode_or_telemetry(monkeypatch, mode, telem
         parse.check_local_only("mineru")
 
 
+def test_mineru_server_is_started_from_its_own_home(monkeypatch):
+    """MinerU 把文档副本存到启动目录下的 blobs/：必须从 ~/.mineru 启动，不能落到工作目录或仓库里。"""
+    started = []
+
+    def run(cmd, **kwargs):
+        if cmd[1:3] == ["server", "status"]:
+            return subprocess.CompletedProcess(cmd, 0, stdout="Server is not running.", stderr="")
+        if cmd[1:3] == ["server", "start"]:
+            started.append(kwargs.get("cwd"))
+        return fake_mineru("managed", "disabled")(cmd, **kwargs)
+
+    monkeypatch.setattr(parse.subprocess, "run", run)
+    parse.check_local_only("mineru")
+    assert started == [Path.home() / ".mineru"]
+
+
 def test_privacy_check_passes_when_local_and_silent(monkeypatch):
     monkeypatch.setattr(parse.subprocess, "run", fake_mineru("managed", "disabled"))
     parse.check_local_only("mineru")

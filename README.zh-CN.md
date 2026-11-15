@@ -47,6 +47,7 @@ uv venv --python 3.12 .venv && uv pip install --python .venv/bin/python -e ".[te
 - **模型服务**：Ollama（Windows/macOS/Linux 均可），推荐 27B 级模型。程序会关闭思考模式。
 - **字体**：WSL/Windows 自动用微软雅黑（按文件声明，粗体用 `msyhbd.ttc`）；macOS/Linux 回退到苹方、Noto Sans CJK 等字体族名，也可在配置里指定字体文件。
 - macOS 需先 `brew install pango`（WeasyPrint 依赖）。
+- 平台状态：Linux 和 WSL2 是日常使用的环境。macOS 和原生 Windows 上测试在 CI 中通过，真机上的完整流程正在验证。Windows 推荐用 WSL2。
 
 检查环境：`doctrans doctor configs/xxx.toml`
 
