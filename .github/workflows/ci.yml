@@ -23,7 +23,7 @@ jobs:
     name: 防泄露检查
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - env:
           DENYLIST: ${{ secrets.DENYLIST }}
         run: .githooks/check-tree
@@ -32,16 +32,16 @@ jobs:
     name: 静态检查
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
       - run: uvx ruff@0.14 check doctrans tests
 
   audit:
     name: 依赖漏洞检查
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
       - run: uvx pip-audit -r requirements.txt
 
   test:
@@ -52,10 +52,10 @@ jobs:
       matrix:
         python: ["3.11", "3.12", "3.13"]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: 排版依赖和中文字体
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libpango-1.0-0 libpangoft2-1.0-0 fonts-noto-cjk
-      - uses: astral-sh/setup-uv@v5
+      - uses: astral-sh/setup-uv@v7
         with:
           python-version: ${{ matrix.python }}
       - name: 按锁定清单安装
@@ -68,9 +68,9 @@ jobs:
     # macOS 和 Windows 的运行时间计费更高，只在 PR、推送到 main 和每周定时跑
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - run: brew install pango
-      - uses: astral-sh/setup-uv@v5
+      - uses: astral-sh/setup-uv@v7
         with:
           python-version: "3.12"
       - run: uv venv --clear .venv && uv pip install --python .venv/bin/python -r requirements-dev.txt && uv pip install --python .venv/bin/python --no-deps -e .
@@ -82,10 +82,10 @@ jobs:
     name: 测试 Windows
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: 排版引擎 Pango（经 MSYS2）
         run: C:\msys64\usr\bin\pacman.exe -S --noconfirm --needed mingw-w64-x86_64-pango
-      - uses: astral-sh/setup-uv@v5
+      - uses: astral-sh/setup-uv@v7
         with:
           python-version: "3.12"
       - run: uv venv --clear .venv; uv pip install --python .venv\Scripts\python.exe -r requirements-dev.txt; uv pip install --python .venv\Scripts\python.exe --no-deps -e .
@@ -99,9 +99,9 @@ jobs:
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libpango-1.0-0 libpangoft2-1.0-0 fonts-noto-cjk
-      - uses: astral-sh/setup-uv@v5
+      - uses: astral-sh/setup-uv@v7
         with:
           python-version: "3.13"
       - name: 不用锁定清单，装允许范围内的最新版
