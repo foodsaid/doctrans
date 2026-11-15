@@ -39,9 +39,9 @@ git config core.hooksPath .githooks
 uv venv --python 3.12 .venv && uv pip install --python .venv/bin/python -e ".[test]"
 ```
 
-- **MinerU 4.x** 装在独立虚拟环境（依赖重），然后锁定本地模式：
+- **MinerU 4.x** 装成独立工具（`uv tool install --python 3.12 mineru`），然后锁定本地模式：
   `mineru config set parse_server.local.mode managed`、`mineru telemetry disable`、`mineru-kit models download --tier standard`。
-  配置里 `[mineru] bin` 指向它的可执行文件。
+  `~/.local/bin` 不在 PATH 时，在配置里用 `[mineru] bin` 写绝对路径。
 - **模型服务**：Ollama（Windows/macOS/Linux 均可），推荐 27B 级模型。程序会关闭思考模式。
 - **字体**：WSL/Windows 自动用微软雅黑（按文件声明，粗体用 `msyhbd.ttc`）；macOS/Linux 回退到苹方、Noto Sans CJK 等字体族名，也可在配置里指定字体文件。
 - macOS 需先 `brew install pango`（WeasyPrint 依赖）。
@@ -65,7 +65,12 @@ doctrans render configs/xxx.toml                   # 改了样式后只重排版
 
 配置字段见 [`examples/example.toml`](examples/example.toml)；术语表格式见 [`examples/glossary_example.csv`](examples/glossary_example.csv)（列 `source,target,tgt_lng`，UTF-8 带 BOM）。
 
-完整的安装、排查、升级、离线迁移说明见 [操作手册](docs/manual.md)。
+文档：
+
+- [操作手册](docs/manual.md)：安装、日常操作、排查、升级、离线迁移。
+- [依赖清单与升级流程](docs/dependencies.md)：依赖了什么、锁定在哪个版本、出安全问题怎么当天修。
+- [参与贡献](CONTRIBUTING.md)：三条不可变的原则，哪些代码可以直接改、哪些要先讨论。
+- [安全策略](SECURITY.md)、[发布规划](docs/roadmap.md)。
 
 ## 已知局限
 

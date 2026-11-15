@@ -4,10 +4,14 @@ version = "0.1.0"
 description = "本地批量翻译长篇 PDF（书、手册）为中文，并按原书版式重排"
 license = "AGPL-3.0-only"
 requires-python = ">=3.11"
-dependencies = ["pymupdf>=1.24", "markdown>=3.5", "weasyprint>=62"]
+dependencies = [
+    "pymupdf>=1.24,<2",   # 2.x 是大改版，验证通过前不放开（见 docs/dependencies.md）
+    "markdown>=3.5",
+    "weasyprint>=62",
+]
 
 [project.optional-dependencies]
-test = ["pytest>=8"]
+test = ["pytest>=8", "ruff>=0.8"]
 
 [project.scripts]
 doctrans = "doctrans.cli:main"
@@ -21,3 +25,11 @@ packages = ["doctrans"]
 
 [tool.setuptools.package-data]
 doctrans = ["*.css"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E9", "F", "B", "UP"]   # 语法错误、未定义/未使用、常见缺陷、过时写法
+ignore = ["B905"]                 # zip() 不强制写 strict=

@@ -3,7 +3,6 @@ import csv
 import hashlib
 import json
 import re
-import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from .llm import ask_json
@@ -13,10 +12,21 @@ Rules:
 - Translate every entry completely, fluently and accurately; add nothing, omit nothing.
 - Keep Markdown syntax (#, **, -, numbering, tables, HTML tags) unchanged.
 - Do not translate product names, release numbers, abbreviations or code.
-- UI labels, menu paths and field names in quotes (»…«, „…“, "…") are rendered as 「…」.
+- {ui_rule}
 - Figure and table captions "{figure_word} N.N: …" become "图 N.N：…"; table captions become "表 N.N：…".
 - Glossary terms are mandatory.
 Reply ONLY with a JSON array: [{{"i": <index>, "zh": "..."}}]"""
+
+
+UI_RULES = {
+    "auto": 'UI labels, menu paths and field names in quotes (»…«, „…“, "…") are rendered as 「…」.',
+    "translate": 'UI labels, menu paths, tab, button and field names (in quotes or bold) are translated into the wording '
+                 'of the Chinese product UI and rendered as 「…」.',
+    "both": 'UI labels, menu paths, tab, button and field names (in quotes or bold) are translated into the wording of '
+            'the Chinese product UI, followed by the original in parentheses, and rendered as 「中文 (Original)」, '
+            'e.g. 「常规设置 (General Settings)」. Product names stay untranslated.',
+}
+LATIN_LABEL = re.compile(r"「[^」一-鿿]*[A-Za-z]{3,}[^」一-鿿]*」")  # 还留着纯外文的界面名称
 
 
 def load_glossary(paths):
@@ -41,28 +51,39 @@ def block_key(text):
 
 
 def load_cache(path):
-    cache = {}
+    """返回 (译文, 界面名称模式)：{段落哈希: 译文}、{段落哈希: 翻译时的 ui_labels}。同一段有多行时后写的生效。"""
+    cache, modes = {}, {}
     if path.exists():
         with open(path, encoding="utf-8") as f:
             for line in f:
                 rec = json.loads(line)
                 cache[rec["k"]] = rec["zh"]
-    return cache
+                modes[rec["k"]] = rec.get("ui", "auto")
+    return cache, modes
 
 
 def translate(cfg, blocks, glossary, log, offline=False):
     """返回与 blocks 一一对应的译文。offline=True 时不调模型，缺译文的段保留原文（只重排版用）。"""
     cache_path = cfg.output / "translate_cache.jsonl"
-    cache = load_cache(cache_path)
+    cache, modes = load_cache(cache_path)
     is_code = lambda b: b.startswith("```")  # 代码原样保留，不送模型
-    todo = [i for i, b in enumerate(blocks) if not b.startswith("![") and not is_code(b) and block_key(b) not in cache]
+
+    def missing(b):
+        k = block_key(b)
+        if k not in cache:
+            return True
+        # 改了 ui_labels：只重译还留着纯外文界面名称、且没按新模式翻过的段，其余继续用缓存
+        return (not offline and cfg.ui_labels != "auto" and modes[k] != cfg.ui_labels
+                and bool(LATIN_LABEL.search(cache[k])))
+
+    todo = [i for i, b in enumerate(blocks) if not b.startswith("![") and not is_code(b) and missing(b)]
     log(f"共 {len(blocks)} 段，缓存命中 {len(blocks) - len(todo)}，待翻译 {len(todo)}")
     if offline:
         if todo:
             log(f"警告: {len(todo)} 段没有译文，保留原文")
         return [b if is_code(b) else cache.get(block_key(b), b) for b in blocks]
 
-    system_base = SYSTEM.format(source_lang=cfg.source_lang, figure_word=cfg.figure_word,
+    system_base = SYSTEM.format(source_lang=cfg.source_lang, figure_word=cfg.figure_word, ui_rule=UI_RULES[cfg.ui_labels],
                                 domain=f" about {cfg.domain}" if cfg.domain else "")
 
     def run(ids):
@@ -97,7 +118,7 @@ def translate(cfg, blocks, glossary, log, offline=False):
                     log(f"  第 {i} 段翻译失败，保留原文")
                     continue
                 cache[block_key(blocks[i])] = zh
-                cf.write(json.dumps({"k": block_key(blocks[i]), "zh": zh}, ensure_ascii=False) + "\n")
+                cf.write(json.dumps({"k": block_key(blocks[i]), "zh": zh, "ui": cfg.ui_labels}, ensure_ascii=False) + "\n")
             cf.flush()
             log(f"翻译 {n}/{len(chunks)} 批")
     return [b if is_code(b) else cache.get(block_key(b), b) for b in blocks]

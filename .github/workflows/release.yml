@@ -1,0 +1,35 @@
+# 发布：推送形如 v0.2.0 的标签时，先跑完整门禁，再构建安装包并创建 GitHub Release。
+# 标签里的版本号必须和 pyproject.toml 一致。
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  checks:
+    uses: ./.github/workflows/ci.yml
+    secrets: inherit
+
+  release:
+    needs: checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - name: 版本号与标签一致
+        run: |
+          version=$(grep -m1 '^version = ' pyproject.toml | cut -d'"' -f2)
+          [ "v$version" = "$GITHUB_REF_NAME" ] || { echo "标签 $GITHUB_REF_NAME 与 pyproject.toml 的版本 $version 不一致"; exit 1; }
+      - name: 构建安装包
+        run: uv build
+      - name: 安装包里不能有数据文件
+        run: |
+          for f in dist/*.whl; do unzip -l "$f"; done | grep -iE '\.(pdf|docx|xlsx|pptx|epub|jsonl|png|jpg|jpeg|csv)$' && { echo "安装包里混进了数据文件"; exit 1; } || echo "安装包干净"
+      - name: 创建 Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" dist/* requirements.txt --generate-notes --verify-tag

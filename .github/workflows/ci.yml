@@ -1,0 +1,109 @@
+# 门禁：每个 PR 和每次推送到 main 都必须通过。
+# 测试只用脚本生成的合成 PDF 和模拟模型：不需要显卡、MinerU、Ollama，也不接触任何真实文档。
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: "0 3 * * 1"   # 每周一：查新漏洞，并用最新依赖预警即将到来的不兼容
+  workflow_dispatch:
+  workflow_call:        # 发布流程复用同一套门禁
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  leak-guard:
+    name: 防泄露检查
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - env:
+          DENYLIST: ${{ secrets.DENYLIST }}
+        run: .githooks/check-tree
+
+  lint:
+    name: 静态检查
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uvx ruff@0.14 check doctrans tests
+
+  audit:
+    name: 依赖漏洞检查
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uvx pip-audit -r requirements.txt
+
+  test:
+    name: 测试 Linux / Python ${{ matrix.python }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - name: 排版依赖和中文字体
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libpango-1.0-0 libpangoft2-1.0-0 fonts-noto-cjk
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: 按锁定清单安装
+        run: uv venv .venv && uv pip install --python .venv/bin/python -r requirements-dev.txt && uv pip install --python .venv/bin/python --no-deps -e .
+      - name: 测试（含合成文档的端到端流程、成品质检、隐私守护）
+        run: .venv/bin/pytest -q
+
+  test-macos:
+    name: 测试 macOS
+    # macOS 和 Windows 的运行时间计费更高，只在 PR、推送到 main 和每周定时跑
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: brew install pango
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - run: uv venv .venv && uv pip install --python .venv/bin/python -r requirements-dev.txt && uv pip install --python .venv/bin/python --no-deps -e .
+      - run: .venv/bin/pytest -q
+        env:
+          DYLD_FALLBACK_LIBRARY_PATH: /opt/homebrew/lib
+
+  test-windows:
+    name: 测试 Windows
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: 排版引擎 Pango（经 MSYS2）
+        run: C:\msys64\usr\bin\pacman.exe -S --noconfirm --needed mingw-w64-x86_64-pango
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - run: uv venv .venv; uv pip install --python .venv\Scripts\python.exe -r requirements-dev.txt; uv pip install --python .venv\Scripts\python.exe --no-deps -e .
+      - run: .venv\Scripts\pytest.exe -q
+        env:
+          WEASYPRINT_DLL_DIRECTORIES: C:\msys64\mingw64\bin
+          PYTHONUTF8: "1"
+
+  latest-deps:
+    name: 最新依赖预警（不作门禁）
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libpango-1.0-0 libpangoft2-1.0-0 fonts-noto-cjk
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.13"
+      - name: 不用锁定清单，装允许范围内的最新版
+        run: uv venv .venv && uv pip install --python .venv/bin/python -e ".[test]" && uv pip list --python .venv/bin/python
+      - run: .venv/bin/pytest -q

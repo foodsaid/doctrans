@@ -3,7 +3,7 @@ import json
 import fitz
 import pytest
 
-from doctrans import config, pipeline, translate
+from doctrans import config, pipeline, qa, translate
 from doctrans.inspect_pdf import inspect, suggest
 from doctrans.structure import to_blocks
 
@@ -71,6 +71,9 @@ def test_end_to_end_with_fake_model(book, monkeypatch):
     assert round(pdf[0].rect.width) == 477                           # 开本取原书
     assert (out / "images" / "cover.jpg").exists()                   # 无文字层的第 1 页当封面
     assert (out / "bi.pdf").exists() and (out / "qa" / "report.md").exists()
+    for name in ("zh.pdf", "bi.pdf"):                                 # 成品质检：不能露出任何排版标记
+        assert not qa.residue(fitz.open(out / name)), name
+    assert "残留标记 0 类" in (out / "qa" / "report.md").read_text(encoding="utf-8")
 
     # 只重排版：全部命中缓存，不调模型
     monkeypatch.setattr(translate, "ask_json", lambda *a, **k: pytest.fail("render 不应调用模型"))
@@ -197,3 +200,25 @@ def test_translate_retries_when_markup_is_lost(book, monkeypatch):
     monkeypatch.setattr(translate, "ask_json", drops_heading)
     zh = translate.translate(cfg, ["## 1.1 Grundlagen", "- Punkt"], [], lambda m: None)
     assert zh == ["## 译1.1 Grundlagen", "- 译Punkt"] and len(calls) == 2
+
+
+def test_ui_labels_mode_retranslates_only_latin_labels(book, monkeypatch):
+    cfg = config.load(book)
+    cfg.output.mkdir(parents=True, exist_ok=True)
+    blocks = ["Open the tab.", "Plain sentence."]
+    first = lambda *a, **k: [{"i": 0, "zh": "打开「Security」选项卡。"}, {"i": 1, "zh": "普通句子。"}]
+    monkeypatch.setattr(translate, "ask_json", first)
+    assert translate.translate(cfg, blocks, [], lambda m: None)[0] == "打开「Security」选项卡。"
+
+    cfg.ui_labels, calls = "both", []
+
+    def second(url, model, system, user, timeout=900):
+        calls.append((system, json.loads(user)))
+        return [{"i": 0, "zh": "打开「Security」选项卡。"}]          # 模型坚持不译（如产品名）
+
+    monkeypatch.setattr(translate, "ask_json", second)
+    translate.translate(cfg, blocks, [], lambda m: None)
+    assert len(calls) == 1 and [x["src"] for x in calls[0][1]] == ["Open the tab."]   # 只重译带外文界面名的那段
+    assert "(Original)" in calls[0][0]
+    translate.translate(cfg, blocks, [], lambda m: None)
+    assert len(calls) == 1                                                            # 已按新模式翻过，不再反复重译

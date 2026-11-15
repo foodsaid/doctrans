@@ -1,0 +1,45 @@
+brotli==1.2.1 ; platform_python_implementation == 'CPython'
+    # via fonttools
+brotlicffi==1.2.1.0 ; platform_python_implementation != 'CPython'
+    # via fonttools
+cffi==2.1.1
+    # via
+    #   brotlicffi
+    #   weasyprint
+cssselect2==0.10.1
+    # via weasyprint
+fonttools==4.68.0
+    # via weasyprint
+markdown==3.11.2
+    # via
+    #   -c /tmp/claude-1000/-home-b-pdf/fbc98384-7045-48d3-af79-b038880e8f6b/scratchpad/tested.txt
+    #   doctrans (pyproject.toml)
+pillow==13.0.0
+    # via weasyprint
+pycparser==3.12 ; implementation_name != 'PyPy'
+    # via cffi
+pydyf==0.13.0
+    # via weasyprint
+pymupdf==1.25.2
+    # via
+    #   -c /tmp/claude-1000/-home-b-pdf/fbc98384-7045-48d3-af79-b038880e8f6b/scratchpad/tested.txt
+    #   doctrans (pyproject.toml)
+pyphen==0.18.1
+    # via weasyprint
+tinycss2==1.5.1
+    # via
+    #   cssselect2
+    #   weasyprint
+tinyhtml5==2.1.0
+    # via weasyprint
+weasyprint==70.0
+    # via
+    #   -c /tmp/claude-1000/-home-b-pdf/fbc98384-7045-48d3-af79-b038880e8f6b/scratchpad/tested.txt
+    #   doctrans (pyproject.toml)
+webencodings==0.6.1
+    # via
+    #   cssselect2
+    #   tinycss2
+    #   tinyhtml5
+zopfli==0.4.3
+    # via fonttools

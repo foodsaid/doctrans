@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+# 全库防泄露检查（CI 用；规则与 pre-commit 相同，但检查所有已入库文件而不是本次暂存的）。
+# 可选：环境变量 DENYLIST 给出敏感词（每行一个），命中即失败。词表本身不入库，CI 里放在仓库 Secret。
+set -euo pipefail
+fail=0
+while IFS= read -r -d '' f; do
+  case "$f" in
+    *.pdf|*.docx|*.xlsx|*.pptx|*.epub|*.jsonl|*.png|*.jpg|*.jpeg)
+      echo "拒绝: $f（文档/图片/缓存不入库）"; fail=1 ;;
+    *.csv|*.toml)
+      [[ "$f" == examples/* || "$f" == pyproject.toml ]] || { echo "拒绝: $f（配置和术语表只允许放 examples/）"; fail=1; } ;;
+  esac
+  size=$(wc -c < "$f")
+  if [ "$size" -gt 300000 ]; then echo "拒绝: $f（${size} 字节，超过 300KB）"; fail=1; fi
+done < <(git ls-files -z)
+
+if [ -n "${DENYLIST:-}" ]; then
+  # 只报文件名和行号，不回显命中的内容（CI 日志里不能出现敏感词）
+  hits=$(git grep -n -i -F -f <(printf '%s\n' "$DENYLIST" | sed '/^$/d') -- . ':!LICENSE' | cut -d: -f1,2 || true)
+  if [ -n "$hits" ]; then echo "拒绝: 以下位置命中 denylist:"; echo "$hits" | head -20; fail=1; fi
+fi
+[ "$fail" -eq 0 ] && echo "全库检查通过：$(git ls-files | wc -l) 个文件"
+exit $fail

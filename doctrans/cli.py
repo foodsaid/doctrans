@@ -6,11 +6,9 @@
   doctrans doctor   [配置]                    检查 MinerU 本地模式、遥测、模型服务、字体
 """
 import argparse
-import json
 import subprocess
 import sys
 import traceback
-import urllib.request
 from pathlib import Path
 
 from . import config
@@ -48,6 +46,7 @@ def cmd_run(args, offline=False):
 
 
 def cmd_doctor(args):
+    from .llm import list_models
     from .parse import check_local_only
     from .render import font_faces
     cfg = config.load(args.config) if args.config else config.Config(input=Path("."), output=Path("."))
@@ -59,9 +58,7 @@ def cmd_doctor(args):
         print(f"MinerU   ✗ {e}")
         ok = False
     try:
-        models_url = cfg.llm_url.split("/v1/")[0] + "/v1/models"
-        with urllib.request.urlopen(models_url, timeout=5) as r:
-            names = [m["id"] for m in json.load(r)["data"]]
+        models_url, names = list_models(cfg.llm_url)
         mark = "✓" if cfg.model in names else f"✗ 未找到 {cfg.model}，现有 {names}"
         print(f"模型服务 {models_url} {mark}")
         ok &= cfg.model in names

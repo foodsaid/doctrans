@@ -1,6 +1,20 @@
 # doctrans 操作手册
 
-本手册可离线阅读，覆盖安装、日常操作、排查、升级、迁移。命令都在 Linux / WSL2 终端里执行。
+本手册可离线阅读，覆盖安装、日常操作、排查、升级、迁移。
+
+**所有命令都在 Linux / WSL2 终端里执行，不能在 PowerShell 或 CMD 里执行**（MinerU 和 doctrans 装在 Linux 一侧）。Windows 上先打开 WSL 终端。
+
+**手册里的路径是示例，要换成你机器上的实际路径。** 先设两个变量，后面的命令都用它们：
+
+```bash
+export MINERU_BIN=~/.local/bin              # MinerU 可执行文件所在目录（uv tool 安装的默认位置）
+```
+
+```bash
+export DOCTRANS=~/doctrans                  # doctrans 仓库目录
+```
+
+不知道 MinerU 装在哪：看任意一份文档配置里 `[mineru] bin = "..."` 那一行，或运行 `doctrans doctor configs/某文档.toml`，第一行括号里就是。变量只在当前终端有效，新开终端要重新设。
 
 ## 1. 这套流程做什么
 
@@ -25,11 +39,11 @@
 自己核对：
 
 ```bash
-mineru config get parse_server.local.mode
+$MINERU_BIN/mineru config get parse_server.local.mode
 ```
 
 ```bash
-mineru telemetry status
+$MINERU_BIN/mineru telemetry status
 ```
 
 第一条应显示 `managed`，第二条应显示 `state: disabled`、`last_flush_at: never`。
@@ -37,7 +51,7 @@ mineru telemetry status
 离线实测方法（可选，证明解析不联网）：在无网络的沙箱里启动服务并解析一份新 PDF。
 
 ```bash
-unshare -rn bash -c 'ip link set lo up; mineru server start; sleep 15; mineru parse 某文件.pdf --pages 1-2 --tier standard -o /tmp/out.md; mineru server stop'
+unshare -rn bash -c "ip link set lo up; $MINERU_BIN/mineru server start; sleep 15; $MINERU_BIN/mineru parse 某文件.pdf --pages 1-2 --tier standard -o /tmp/out.md; $MINERU_BIN/mineru server stop"
 ```
 
 ## 2. 目录约定
@@ -82,35 +96,37 @@ git config core.hooksPath .githooks
 uv venv --python 3.12 .venv && uv pip install --python .venv/bin/python -e ".[test]"
 ```
 
-### 3.2 MinerU（装在独立的虚拟环境，依赖重）
+### 3.2 MinerU（装成独立工具，多个项目可以共用）
 
 ```bash
-uv venv --python 3.12 ~/mineru-venv && uv pip install --python ~/mineru-venv/bin/python mineru
+uv tool install --python 3.12 mineru
 ```
+
+它有自己的隔离环境，命令出现在 `~/.local/bin`（`mineru`、`mineru-kit` 等），模型和配置在 `~/.mineru`。
 
 锁定本地模式、关闭遥测、下载模型（约 2 GB）：
 
 ```bash
-~/mineru-venv/bin/mineru server start
+$MINERU_BIN/mineru server start
 ```
 
 ```bash
-~/mineru-venv/bin/mineru config set parse_server.local.mode managed
+$MINERU_BIN/mineru config set parse_server.local.mode managed
 ```
 
 ```bash
-~/mineru-venv/bin/mineru telemetry disable
+$MINERU_BIN/mineru telemetry disable
 ```
 
 ```bash
-~/mineru-venv/bin/mineru-kit models download --tier standard
+$MINERU_BIN/mineru-kit models download --tier standard
 ```
 
 ```bash
-~/mineru-venv/bin/mineru-kit models verify
+$MINERU_BIN/mineru-kit models verify
 ```
 
-每份文档的配置里用 `[mineru] bin = "..."` 指向这个 `mineru` 可执行文件。
+`~/.local/bin` 在 PATH 里时，配置里不用写 `[mineru]`；否则用 `[mineru] bin = "/home/你/.local/bin/mineru"` 写绝对路径（后台任务、定时任务里 PATH 可能不全，写绝对路径最稳）。
 
 ### 3.3 Ollama 和翻译模型
 
@@ -131,14 +147,14 @@ ollama pull qwen3.8:27b
 ### 3.5 检查
 
 ```bash
-~/doctrans/.venv/bin/doctrans doctor configs/某文档.toml
+$DOCTRANS/.venv/bin/doctrans doctor configs/某文档.toml
 ```
 
 四项都打勾才算装好：MinerU 本地模式、模型服务、字体、提交检查。
 
 ## 4. 日常操作：翻译一份新文档
 
-以下命令在数据工作区（`~/doctrans-data`）里执行，`doctrans` 指 `~/doctrans/.venv/bin/doctrans`。
+以下命令在数据工作区（`~/doctrans-data`）里执行，`doctrans` 指 `$DOCTRANS/.venv/bin/doctrans`。
 
 ### 第 1 步：放文件，起短名
 
@@ -159,7 +175,8 @@ doctrans inspect inbox/mybook.pdf
 - 原目录页、索引页要去掉（译本会自动生成中文目录）。
 - 广告页、空白页去掉。
 - 填上 `domain`（书的主题，一句英文，帮助模型选术语）。
-- 加上 `[mineru] bin = "..."`。
+- 需要时加上 `[mineru] bin = "..."`（见 3.2）。
+- 界面名称怎么处理：`ui_labels`（见第 5 节）。操作手册类文档建议用 `both`。
 
 ### 第 3 步：术语表（可选，强烈建议）
 
@@ -234,6 +251,7 @@ output = "../work/mybook"
 pages = "1,3-4,14-462"        # 逗号分隔多个范围
 source_lang = "English"        # 写进提示词
 domain = "ERP software"        # 书的主题
+ui_labels = "auto"             # 界面名称（按钮、选项卡、字段名），见下
 glossaries = ["../glossary/mybook/*.csv"]
 
 [structure]
@@ -248,11 +266,21 @@ batch = 8          # 每次请求的段数
 parallel = 4       # 并发请求数
 
 [mineru]
-bin = "/home/你/mineru-venv/bin/mineru"
+bin = "/home/你/.local/bin/mineru"
 
 [render]
 bilingual = true   # 是否另出对照版
 ```
+
+`ui_labels` 怎么选：
+
+| 取值 | 效果 | 适合 |
+|---|---|---|
+| `auto` | 由模型决定，外文界面名称多数保留原文 | 只读不操作的书 |
+| `translate` | 译成中文：「常规设置」 | 使用中文界面 |
+| `both` | 中文后括号带原文：「常规设置 (General Settings)」 | 操作手册；中英文界面都要能对上 |
+
+模型给的译名不一定和软件中文界面的实际叫法一致，所以操作类文档推荐 `both`。改了这个选项后重跑 `doctrans run`：只会重新翻译那些还留着纯外文界面名称的段落，其余段落继续用缓存。
 
 `headings` 怎么选（`inspect` 会自动判断，一般不用改）：
 
@@ -283,13 +311,13 @@ bilingual = true   # 是否另出对照版
 ### 7.1 记下当前版本
 
 ```bash
-mineru version; ollama --version; uv pip list --python ~/doctrans/.venv/bin/python | grep -iE "pymupdf|weasyprint|markdown"
+$MINERU_BIN/mineru version; ollama --version; uv pip list --python $DOCTRANS/.venv/bin/python | grep -iE "pymupdf|weasyprint|markdown"
 ```
 
 ### 7.2 升级后的统一验证
 
 ```bash
-cd ~/doctrans && .venv/bin/pytest -q
+cd $DOCTRANS && .venv/bin/pytest -q
 ```
 
 ```bash
@@ -307,29 +335,39 @@ doctrans render configs/某文档.toml
 ### 7.3 升级 doctrans 本身
 
 ```bash
-cd ~/doctrans && git pull && uv pip install --python .venv/bin/python -e ".[test]"
+cd $DOCTRANS && git pull && uv pip install --python .venv/bin/python -e ".[test]"
 ```
 
 回退：`git log --oneline` 找到之前的提交，`git checkout <提交号>`。
 
 ### 7.4 升级 MinerU
 
+先记下当前版本，回退时用：
+
 ```bash
-~/mineru-venv/bin/mineru server stop
+$MINERU_BIN/mineru version
+```
+
+停服务、升级（用 `uv tool` 安装的）：
+
+```bash
+$MINERU_BIN/mineru server stop
 ```
 
 ```bash
-uv pip install --python ~/mineru-venv/bin/python -U mineru
+uv tool upgrade mineru
 ```
+
+装在普通虚拟环境里的，把第二条换成 `uv pip install --python 虚拟环境/bin/python -U mineru`。
 
 升级后必须重新确认三件事（新版本可能改默认值或需要新模型）：
 
 ```bash
-~/mineru-venv/bin/mineru server start && ~/mineru-venv/bin/mineru config get parse_server.local.mode && ~/mineru-venv/bin/mineru telemetry status
+$MINERU_BIN/mineru server start && $MINERU_BIN/mineru config get parse_server.local.mode && $MINERU_BIN/mineru telemetry status
 ```
 
 ```bash
-~/mineru-venv/bin/mineru-kit models verify
+$MINERU_BIN/mineru-kit models verify
 ```
 
 `verify` 报缺模型时重新下载：`mineru-kit models download --tier standard`。
@@ -338,7 +376,8 @@ uv pip install --python ~/mineru-venv/bin/python -U mineru
 
 - MinerU 的命令行在大版本之间变化很大（本流程基于 4.x）。跨大版本升级前先看发布说明；doctrans 用到的命令只有 `server start/status`、`config get`、`telemetry status`、`parse --pages --tier --wait -o`、`read -f image`。
 - 新版本的解析结果会和旧的略有不同。已有文档的 `source_*.md` 是缓存，不会自动重新解析；想用新版本重新解析，删掉这些文件（译文缓存按段落内容匹配，没变的段落不会重新翻译）。
-- 回退：`uv pip install --python ~/mineru-venv/bin/python mineru==旧版本号`。
+- 回退：`uv tool install --force --python 3.12 mineru==旧版本号`。
+- 小版本升级（如 4.1 → 4.2）实测：隐私设置保留、模型不用重新下载、解析结构不变，整个过程几分钟。
 
 ### 7.5 升级 Ollama 和翻译模型
 
@@ -350,7 +389,7 @@ uv pip install --python ~/mineru-venv/bin/python -U mineru
 ### 7.6 升级 Python 依赖（PyMuPDF、WeasyPrint、Markdown）
 
 ```bash
-uv pip install --python ~/doctrans/.venv/bin/python -U pymupdf weasyprint markdown
+uv pip install --python $DOCTRANS/.venv/bin/python -U pymupdf weasyprint markdown
 ```
 
 排版依赖升级后版式可能有细微变化（分页、行距），用 7.2 的回归对比页数。回退：安装时指定旧版本号，如 `weasyprint==70.0`。
@@ -401,11 +440,34 @@ uv pip install --python .venv/bin/python --no-index --find-links wheels/ -e ".[t
 - `.git/info/denylist`（不入库）：每行一个敏感词（书名、作者、客户名），提交内容命中就拒绝。匹配不区分大小写，短词会误伤代码，尽量写全名或词组。
 - 只翻译你有权使用的文档。带他人水印的副本、来源不明的版权书不要处理。
 
+### 自动检查（CI）
+
+每次推送到 GitHub，`.github/workflows/ci.yml` 会自动跑两项，结果在仓库的 Actions 页看：
+
+| 检查 | 内容 |
+|---|---|
+| 防泄露 | `.githooks/check-tree` 扫描所有已入库文件：文档、图片、缓存、大文件、`examples/` 以外的配置和术语表一律拒绝 |
+| 测试 | Python 3.11 / 3.12 / 3.13 下跑全部测试，包括用合成 PDF 和模拟模型走完整流程，并对成品做"残留标记"质检 |
+
+另外每周一自动跑一次，依赖出了新版本导致的问题能及早发现。
+
+CI 里**不会也不能**跑真实文档：那需要把文档传到 GitHub 的机器上，而且那里没有显卡。真实文档的质检报告只在本机生成。
+
+可选：把敏感词表放进仓库 Secret（名字 `DENYLIST`，每行一个词），CI 会多做一遍敏感词扫描，日志只显示命中的文件和行号。注意这等于把这些词（书名、作者名等）交给 GitHub 保管，是否这样做由你决定；不设置时这一步自动跳过。
+
+本机手动跑同样的全库检查：
+
+```bash
+cd $DOCTRANS && .githooks/check-tree
+```
+
 ## 11. 已知局限
+
+维护约定：这里只列**当前确实存在**的局限。某条被修复后，先用一份受影响的文档验证，再从这里删掉，并在提交说明里写明。升级 MinerU 后也顺带复查与解析有关的几条。
 
 - **截图里的文字不翻译**，保持原文。
 - **页码和原书不对应**；正文里"参见第 N 页"指的是原书页码。
-- **表格**：MinerU 偶尔漏识别单元格、把跨页表格拆成两张，或把截图识别成表格（后者工具会按图注换回原图）。数据表格请对照原文核对。
+- **表格**：跨页的表格会被拆成两张；截图偶尔被识别成表格（工具会按图注换回原图）。重要的数据表格请对照原文核对。
 - **代码块不翻译**，代码里的注释保持原文。
 - **标题识别**依赖编号或书签。既没有编号也没有书签的 PDF，标题层级需要人工调整或扩展 `structure.py`。
 - **扫描件**会走 OCR，速度慢、错误多，先抽查识别质量。

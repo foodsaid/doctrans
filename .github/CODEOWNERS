@@ -1,0 +1,21 @@
+# 所有改动默认需要维护者评审
+*                         @foodsaid
+
+# 框架与对外接口：必须由代码负责人批准
+/doctrans/pipeline.py     @foodsaid
+/doctrans/config.py       @foodsaid
+/doctrans/cli.py          @foodsaid
+/doctrans/parse.py        @foodsaid
+/doctrans/llm.py          @foodsaid
+/doctrans/translate.py    @foodsaid
+
+# 门禁本身：CI、钩子、依赖、安全策略
+/.github/                 @foodsaid
+/.githooks/               @foodsaid
+/.gitignore               @foodsaid
+/pyproject.toml           @foodsaid
+/requirements*.txt        @foodsaid
+/tests/test_guards.py     @foodsaid
+/SECURITY.md              @foodsaid
+/CONTRIBUTING.md          @foodsaid
+/LICENSE                  @foodsaid

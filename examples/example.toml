@@ -9,6 +9,7 @@ output = "../work/manual"
 pages = "1-4,19-1034"      # 逗号分隔多个范围；跳过原目录（会重新生成）和索引（拿去做术语表）
 source_lang = "German"     # 写进提示词
 domain = "ERP software"    # 书的主题，帮助模型选用正确术语
+ui_labels = "auto"         # 界面名称：auto 由模型决定；translate 译成中文；both 中文后括号带原文，如「常规设置 (General Settings)」
 glossaries = ["../glossary/manual/*.csv", "../glossary/common/*.csv"]  # 列在前面的优先
 
 [structure]

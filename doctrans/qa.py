@@ -13,7 +13,7 @@ NOT_PROSE = re.compile(r"\]\([^)]*\)|https?://\S+|`[^`]*`|```.*?```|「[^」]*�
 def untranslated(blocks, zh):
     """拉丁字母多、中文极少的正文段视为疑似漏译（标题、图片、表格、代码除外）。"""
     out = []
-    for src, cn in zip(blocks, zh):
+    for cn in zh:
         if cn.startswith(("![", "<", "#", "```", "|", "[")) or "<table" in cn:
             continue  # 图片、表格、代码、链接里的原文多是界面数据，不算漏译
         prose = NOT_PROSE.sub(" ", cn)  # 链接、网址、路径、代码、界面标签本来就保留原文
@@ -31,7 +31,7 @@ RESIDUE = {
     "公式 $$": re.compile(r"\$\$"),
     "转义 \\_": re.compile(r"\\[_*\[\]]"),
     "实体 &lt;": re.compile(r"&(?:lt|gt|amp);"),
-    "列表符号": re.compile(rf"(?m)^[◾▪■] ?\S"),
+    "列表符号": re.compile(r"(?m)^[◾▪■] ?\S"),
 }
 
 

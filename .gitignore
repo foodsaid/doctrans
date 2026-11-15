@@ -6,6 +6,16 @@
 !pyproject.toml
 !.githooks/
 !.githooks/*
+!.github/
+!.github/*.yml
+!.github/*.md
+!.github/CODEOWNERS
+!.github/workflows/
+!.github/workflows/*.yml
+!CONTRIBUTING.md
+!SECURITY.md
+!requirements.txt
+!requirements-dev.txt
 !doctrans/
 !doctrans/*.py
 !doctrans/*.css
