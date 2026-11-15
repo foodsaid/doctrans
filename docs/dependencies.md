@@ -8,9 +8,9 @@
 
 | 包 | 用途 | 允许范围 | 已验证版本 | 许可证 |
 |---|---|---|---|---|
-| PyMuPDF | 读 PDF：书签、原图、封面、成品质检 | `>=1.24,<2` | 1.25.2 | AGPL-3.0 |
+| PyMuPDF | 读 PDF：书签、原图、封面、成品质检 | `>=1.24,<2` | 1.25.2、1.28.2 | AGPL-3.0 |
 | WeasyPrint | HTML → PDF 排版 | `>=62` | 70.0 | BSD-3 |
-| Markdown | Markdown → HTML | `>=3.5` | 3.11.2 | BSD-3 |
+| Markdown | Markdown → HTML | `>=3.5` | 3.11.2、3.11.3 | BSD-3 |
 
 开发依赖：pytest（测试）、ruff（静态检查）。
 
