@@ -1,7 +1,12 @@
 """OpenAI 兼容接口（默认本地 Ollama）。思考模式必须关闭：开着会慢几十倍，还常输出坏 JSON。"""
 import json
 import re
+import urllib.error
 import urllib.request
+
+
+class ModelUnavailable(RuntimeError):
+    """模型服务连不上（没启动、地址不对）。重试没有意义，直接停下并说明原因。"""
 
 
 def ask_json(url, model, system, user, timeout=900):
@@ -13,8 +18,13 @@ def ask_json(url, model, system, user, timeout=900):
         "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}],
     }
     req = urllib.request.Request(url, data=json.dumps(body).encode(), headers={"Content-Type": "application/json"})
-    with urllib.request.urlopen(req, timeout=timeout) as r:
-        content = json.load(r)["choices"][0]["message"]["content"]
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as r:
+            content = json.load(r)["choices"][0]["message"]["content"]
+    except urllib.error.HTTPError as e:
+        raise ModelUnavailable(f"模型服务 {url} 返回 {e.code}：检查配置里的模型名 {model!r} 是否已下载") from e
+    except (urllib.error.URLError, ConnectionError) as e:
+        raise ModelUnavailable(f"连不上模型服务 {url}：请先启动 Ollama（已翻译的段落都在缓存里，启动后重跑即可续上）") from e
     m = re.search(r"\[.*\]", content, re.S)
     if not m:
         raise ValueError("回复里没有 JSON 数组")

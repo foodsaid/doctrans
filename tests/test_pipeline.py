@@ -116,7 +116,17 @@ def test_structure_english_layout():
     assert "The report shows two values:" in blocks                       # 冒号结尾的不是标题
     assert "- **Quantity**" in blocks
     assert "▪ Item after page break" in blocks                            # 新列表项不接到上一段
-    assert [listify(b) for b in blocks[-3:]] == ["- Plain item", "    - Nested item", "- Item after page break"]
+    assert listify(blocks[-3:]) == ["- Plain item", "    - Nested item", "- Item after page break"]
+    # 二级符号前面不是列表时不能缩进（会被排成代码块）；整行加粗的列表项也要认；多行说明逐行缩进
+    assert listify(["Text.", "– Lone dash item", "**▪ Bold item**", "- **T**\n\n    a\nb"]) == [
+        "Text.", "- Lone dash item", "- **Bold item**", "- **T**\n\n    a\n    b"]
+
+
+def test_code_block_after_list_title_stays_separate():
+    md = "## ▪ For one browser:\n\n```xml\n<a>\n\n</a>\n```\n\nSELECT T0.Doc\\_Num FROM T0 WHERE T0.x &lt; 3\n\nNext paragraph."
+    blocks = to_blocks(md, ["Chapter"])
+    assert blocks == ["- **For one browser:**", "```xml\n<a>\n\n</a>\nSELECT T0.Doc_Num FROM T0 WHERE T0.x < 3\n```",
+                      "Next paragraph."]
 
 
 def test_suggest_nested_bookmarks_and_pages_after_index(tmp_path):
@@ -170,3 +180,20 @@ def test_structure_bookmark_headings():
         "# Chapter 2 Going Further", "## Advanced ideas", "### Case 1—First worked example",
         "#### A heading not in the bookmarks", "## Summary"]
     assert "[ 3 ]" not in blocks and "Chapter 1" not in blocks and "Getting Started" not in blocks  # 页码、页眉
+
+
+def test_translate_retries_when_markup_is_lost(book, monkeypatch):
+    cfg = config.load(book)
+    cfg.output.mkdir(parents=True, exist_ok=True)
+    calls = []
+
+    def drops_heading(url, model, system, user, timeout=900):
+        calls.append(1)
+        out = fake_ask_json(url, model, system, user)
+        if len(calls) == 1:
+            out = [{"i": x["i"], "zh": x["zh"].lstrip("# ")} for x in out]  # 第一次把标题符号弄丢
+        return out
+
+    monkeypatch.setattr(translate, "ask_json", drops_heading)
+    zh = translate.translate(cfg, ["## 1.1 Grundlagen", "- Punkt"], [], lambda m: None)
+    assert zh == ["## 译1.1 Grundlagen", "- 译Punkt"] and len(calls) == 2

@@ -5,7 +5,7 @@ description: 用本地模型把长篇外文 PDF（书、手册）批量翻译成
 
 # 长文档本地翻译（doctrans）
 
-工具仓库在 `/home/b/doctrans`（命令 `/home/b/doctrans/.venv/bin/doctrans`），用法见其 README。
+工具仓库在 `/home/b/doctrans`（命令 `/home/b/doctrans/.venv/bin/doctrans`），用法见其 README，排查和升级见 `docs/manual.md`。
 数据放在仓库外的工作区（如 `/home/b/pdf/data`）：inbox/、configs/、glossary/、work/。**任何数据都不要放进仓库。**
 
 ## 流程
@@ -19,7 +19,7 @@ description: 用本地模型把长篇外文 PDF（书、手册）批量翻译成
    - 手写核心术语，放在 `glossary/x/manual.csv`。
    - 有书后索引时，用 `doctrans glossary configs/x.toml <索引页> -o glossary/x/index.csv` 生成。
 4. 先把 `pages` 改成一章试跑 `doctrans run`，让用户确认译文和版式，再跑全书（后台运行，可断点续跑）。
-5. 看 `work/x/qa/report.md`：疑似漏译、术语偏差、抽样页截图。改样式后用 `doctrans render` 重排版，不调模型。
+5. 看 `work/x/qa/report.md`：残留标记（成品里露出的 `####`、`<table>` 等，按页核对）、疑似漏译、术语偏差、抽样页截图。改样式后用 `doctrans render` 重排版，不调模型。
 
 ## 坑
 

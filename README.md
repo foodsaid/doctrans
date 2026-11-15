@@ -9,7 +9,7 @@
 | `zh.pdf` | 纯中文版：原书开本、带页码的中文目录、章/节/小节三级书签、原书嵌入图 |
 | `bi.pdf` | 逐段对照版（原文灰色在上，中文在下） |
 | `zh.md` | Markdown 译文，可直接放进知识库 |
-| `qa/report.md` | 质检：疑似漏译、术语偏差、页数和书签，以及抽样页截图 |
+| `qa/report.md` | 质检：残留排版标记、疑似漏译、术语偏差、页数和书签，以及抽样页截图 |
 
 ## 数据不入库
 
@@ -65,10 +65,13 @@ doctrans render configs/xxx.toml                   # 改了样式后只重排版
 
 配置字段见 [`examples/example.toml`](examples/example.toml)；术语表格式见 [`examples/glossary_example.csv`](examples/glossary_example.csv)（列 `source,target,tgt_lng`，UTF-8 带 BOM）。
 
+完整的安装、排查、升级、离线迁移说明见 [操作手册](docs/manual.md)。
+
 ## 已知局限
 
 - 截图里的界面文字保持原文；页码与原书不对应。
-- 章节识别依赖编号写法（`<章节词> N 标题`、`3.1`、`3.1.1`）。没有编号的书需要扩展 `structure.py`。
+- 标题层级靠编号（`3.1`、`3.1.1`）或 PDF 书签确定。两者都没有的 PDF 需要扩展 `structure.py`。
+- 代码块原样保留、不翻译；表格识别偶有缺漏，数据表格请对照原文。
 - 只处理 PDF。DOCX/PPTX/XLSX 应直接改原文件中的文字（python-docx、python-pptx、openpyxl），计划另做。
 
 ## 规模参考

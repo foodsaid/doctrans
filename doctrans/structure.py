@@ -3,6 +3,7 @@ MinerU 给的 # 层级不可靠（几乎全是 ##，页眉也被标成标题）�
 「<章词> N 标题」→ h1，「3.1 标题」→ h2，「3.1.1」→ h3；同一编号只有第一次出现是标题，其余是页眉。
 小节不带编号的书改用 PDF 书签定级（OutlineNormalizer）。"""
 import collections
+import html
 import re
 
 PAGE_MARK = re.compile(r"^<!-- page \d+ of \d+ -->$")
@@ -35,14 +36,35 @@ def latex_to_text(block):
     s = re.sub(r"\\[a-zA-Z]+", "", s).replace("{", "").replace("}", "")
     s = re.sub(r"(?<=\d) (?=[\d-])|(?<=-) (?=\d)", "", s)  # 「1 0 - 1 0」→「10-10」
     return re.sub(r"\s+", " ", s).strip()
+
+
+def plain_code(text):
+    """正文里的代码行带着 Markdown 转义（\\_、&lt;），放进代码块前还原。"""
+    return re.sub(r"\\([_*\[\]#<>&|`~-])", r"\1", html.unescape(text))
+
+
 LIST_START = ("#", "![", "|", "- ", "– ", "◾", "▪", "•", "■", "●")  # 这些开头的块不是上一段的延续
+NOT_LIST_BODY = LIST_START + ("```", "<", "$$")  # 代码块、表格等不并进列表项：排版引擎不认缩进的围栏
 
 
-def listify(block):
-    """「◾ 」「▪ 」等开头的块转成 Markdown 列表，「– 」开头的转成二级列表。
-    在翻译之后对原文和译文同时做（模型会保留这些符号），切段结果不变，已有翻译缓存继续有效。"""
-    block = re.sub(rf"^{BULLET} ?", "- ", block)
-    return re.sub(r"^– ", "    - ", block)
+def listify(blocks):
+    """把列表符号转成 Markdown 列表：「◾ 」「▪ 」等（含整行加粗的「**◾ …**」）→ 一级，「– 」→ 二级。
+    在翻译之后对原文和译文各做一遍（模型会保留这些符号），切段结果不变，已有翻译缓存继续有效。
+    四个空格的缩进只有跟在列表项后面才是二级列表，否则会被排版成代码块，所以要看上一块。"""
+    out = []
+    for block in blocks:
+        block = re.sub(rf"^\*\*{BULLET} ?", "- **", block)
+        block = re.sub(rf"^{BULLET} ?", "- ", block)
+        in_list = bool(out) and bool(re.match(r"- |    |\d+\. ", out[-1]))
+        if block.startswith("– "):
+            block = ("    - " if in_list else "- ") + block[2:]
+        elif block.startswith("    ") and not in_list:
+            block = block.lstrip()
+        if block.startswith("- ") and "\n\n    " in block:  # 列表项的说明有多行时每行都要缩进
+            head, body = block.split("\n\n    ", 1)
+            block = head + "\n\n    " + re.sub(r"\n(?!    |\n)", "\n    ", body)
+        out.append(block)
+    return out
 
 
 def chapter_pattern(words):
@@ -202,11 +224,11 @@ def to_blocks(md, chapter_words, outline=None):
                 is_code_line(block)
                 or (after_page_break and block.startswith("```"))):
             # 代码续行（或跨页拆成两段的代码块）并回上一个代码块
-            body = block.split("\n", 1)[1].rsplit("```", 1)[0] if block.startswith("```") else block + "\n"
+            body = block.split("\n", 1)[1].rsplit("```", 1)[0] if block.startswith("```") else plain_code(block) + "\n"
             blocks[-1] = prev.rstrip()[:-3].rstrip("\n") + "\n" + body + "```"
         elif is_code_line(block):
-            blocks.append(f"```\n{block}\n```")
-        elif LIST_TITLE.fullmatch(prev) and not block.startswith(LIST_START):
+            blocks.append(f"```\n{plain_code(block)}\n```")
+        elif LIST_TITLE.fullmatch(prev) and not block.startswith(NOT_LIST_BODY):
             blocks[-1] = f"{prev}\n\n    {block}"  # 列表小标题和它的说明合成一个列表项
         elif (
             after_page_break and prev
@@ -220,4 +242,6 @@ def to_blocks(md, chapter_words, outline=None):
         else:
             blocks.append(block)
         after_page_break = False
-    return blocks
+    # 「Note」「Procedure」这类小标题，MinerU 时而标成标题时而当正文：多数是标题的就统一成标题
+    minor = collections.Counter(b[5:] for b in blocks if b.startswith("#### "))
+    return [f"#### {b}" if len(b) <= 30 and minor[b] >= 5 else b for b in blocks]

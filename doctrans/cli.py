@@ -30,11 +30,15 @@ def cmd_glossary(args):
 
 
 def cmd_run(args, offline=False):
+    from .llm import ModelUnavailable
     from .pipeline import run
     failed = []
     for path in args.config:
         try:
             run(config.load(path), offline=offline)
+        except ModelUnavailable as e:
+            print(f"[{Path(path).stem}] {e}")
+            failed.append(path)
         except Exception:
             traceback.print_exc()
             failed.append(path)

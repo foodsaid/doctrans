@@ -14,6 +14,7 @@ glossaries = ["../glossary/manual/*.csv", "../glossary/common/*.csv"]  # 列在�
 [structure]
 chapter_words = ["Kapitel", "Anhang"]   # 章标题的词，如「Kapitel 7 …」「Anhang A …」
 figure_word = "Abbildung"                # 原文图注词，如「Abbildung 6.44: …」
+headings = "numbers"                     # numbers：按「3.1」式编号定标题层级；bookmarks：按 PDF 书签（小节不带编号的书）
 
 [llm]
 url = "http://localhost:11434/v1/chat/completions"   # 任何 OpenAI 兼容接口

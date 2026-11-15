@@ -1,6 +1,7 @@
 """用本地 MinerU 把 PDF 解析为 Markdown，并导出图片。只走本地模式，解析前检查隐私设置。"""
 import re
 import subprocess
+import time
 
 IMAGE = re.compile(r"^!\[[^\]]*\]\((doc:[^)]+)\)$")
 
@@ -29,10 +30,14 @@ def parse_pdf(cfg, pages):
         md_path = cfg.output / f"source_{rng}.md"
         if not md_path.exists():
             check_local_only(cfg.mineru)
-            subprocess.run(
-                [cfg.mineru, "parse", cfg.input, "--pages", rng, "--tier", "standard", "--wait", "14400", "-o", md_path],
-                check=True,
-            )
+            cmd = [cfg.mineru, "parse", cfg.input, "--pages", rng, "--tier", "standard", "--wait", "14400", "-o", md_path]
+            for _ in range(30):  # 本地服务刚启动的头几秒解析端还没就绪，等一等再试
+                result = subprocess.run(cmd, capture_output=True, text=True)
+                if "not ready" not in result.stdout + result.stderr:
+                    break
+                time.sleep(6)
+            if result.returncode or not md_path.exists():
+                raise RuntimeError(f"MinerU 解析 {rng} 失败: {(result.stderr or result.stdout).strip()[-500:]}")
         parts.append(md_path.read_text(encoding="utf-8"))
     return "\n\n".join(parts)
 

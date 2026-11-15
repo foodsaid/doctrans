@@ -16,3 +16,5 @@
 !examples/*.csv
 !skill/
 !skill/*.md
+!docs/
+!docs/*.md

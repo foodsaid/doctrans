@@ -29,6 +29,13 @@ def load_glossary(paths):
     return sorted(entries.items(), key=lambda kv: -len(kv[0]))
 
 
+def shape(text):
+    """段落的结构特征：标题层级、表格行数和单元格数、开头的列表/编号符号。译文必须和原文一致。"""
+    marker = re.match(r"\s*(?:[-–◾▪•■●] |\d+\. |[a-z]\. )?", text).group()
+    marker = re.sub(r"\d+", "1", marker)
+    return (len(re.match(r"#*", text).group()), text.count("<tr"), text.count("<td") + text.count("<th"), marker)
+
+
 def block_key(text):
     return hashlib.sha1(text.encode("utf-8")).hexdigest()
 
@@ -64,12 +71,16 @@ def translate(cfg, blocks, glossary, log, offline=False):
         terms = [f"{s} = {t}" for s, t in glossary if s != t and re.search(rf"\b{re.escape(s)}\b", joined)]
         system = system_base + ("\nGlossary:\n" + "\n".join(terms) if terms else "")
         user = json.dumps([{"i": k, "src": t} for k, t in enumerate(texts)], ensure_ascii=False)
-        for _ in range(3):
+        for attempt in range(3):
             try:
                 out = {int(x["i"]): x["zh"] for x in ask_json(cfg.llm_url, cfg.model, system, user)}
-                if set(out) == set(range(len(texts))):
+                if set(out) != set(range(len(texts))):
+                    log(f"  条数不符 {len(out)}/{len(texts)}，重试")
+                    continue
+                broken = [k for k in out if shape(out[k]) != shape(texts[k])]
+                if not broken or (attempt == 2 and len(ids) == 1):  # 单段重试到头仍不符就接受，由质检报告提示
                     return {ids[k]: v for k, v in out.items()}
-                log(f"  条数不符 {len(out)}/{len(texts)}，重试")
+                log(f"  格式不符 {len(broken)} 段（标题/表格/列表符号与原文不一致），重试")
             except (ValueError, KeyError, TypeError) as e:
                 log(f"  解析失败 {e}，重试")
         if len(ids) > 1:

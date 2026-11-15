@@ -27,16 +27,17 @@ def font_faces(regular, bold):
 
 
 def build_toc(body):
-    """目录收 h1（章）和带编号的 h2（节，如「3.1 …」），页码由 WeasyPrint 的 target-counter 填。"""
+    """目录收 h1（章）和 h2（节），页码由 WeasyPrint 的 target-counter 填。"""
     items = []
     for level, hid, text in re.findall(r'<h([12]) id="([^"]+)">(.*?)</h\1>', body):
         plain = re.sub(r"<[^>]+>", "", text)
-        if level == "1" or re.match(r"\d+\.\d+\s", plain):
+        if plain:
             items.append(f'<div class="l{level}"><a href="#{hid}">{plain}</a></div>')
     return f'<nav class="toc"><h1>目录</h1>{"".join(items)}</nav>' if items else ""
 
 
 def to_html(text):
+    text = re.sub(r"\\\\(?=[_*])", "", text)  # MinerU 偶尔在表格里输出双重转义（\\\\_）
     html = markdown.markdown(text, extensions=["tables", "md_in_html", "toc", "fenced_code"])
     return re.sub(r"<p>((?:图|表) \d+\.\d+\s*[：:])", r'<p class="cap">\1', html)
 

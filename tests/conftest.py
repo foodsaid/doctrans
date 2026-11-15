@@ -90,7 +90,7 @@ def fake_ask_json(url, model, system, user, timeout=900):
         if re.match(r"^Abbildung \d", src) or src.startswith("<"):
             zh = re.sub(r"^Abbildung (\d+\.\d+):", r"图 \1：", src)  # 图注和 HTML 原样结构
         else:
-            zh = re.sub(r"^(#+ )?", lambda m: (m.group(1) or "") + "译", src, count=1)
+            zh = re.sub(r"^(#+ |- |\d+\. )?", lambda m: (m.group(1) or "") + "译", src, count=1)
         out.append({"i": item["i"], "zh": zh})
     return out
 
