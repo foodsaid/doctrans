@@ -1,88 +1,122 @@
 # doctrans
 
-本地批量把长篇外文 PDF（书、手册）翻译成中文，并按原书版式重新排版。全程离线：本地 MinerU 解析，本地模型（Ollama 等 OpenAI 兼容接口）翻译，WeasyPrint 排版。
+**English** | [中文](README.zh-CN.md)
 
-输出（每份文档一个目录）：
+Translate long PDFs (books, manuals) into Chinese and re-typeset them as a readable book, entirely on your own machine. Parsing runs on a local [MinerU](https://github.com/opendatalab/MinerU), translation on a local model (Ollama or any OpenAI-compatible endpoint), layout on WeasyPrint. No document content leaves your computer.
 
-| 文件 | 内容 |
+> Status: alpha. The target language is currently fixed to Simplified Chinese; source documents in German and English have been tested. Most of the documentation is in Chinese for now.
+
+## What you get
+
+One folder per document:
+
+| File | Content |
 |---|---|
-| `zh.pdf` | 纯中文版：原书开本、带页码的中文目录、章/节/小节三级书签、原书嵌入图 |
-| `bi.pdf` | 逐段对照版（原文灰色在上，中文在下） |
-| `zh.md` | Markdown 译文，可直接放进知识库 |
-| `qa/report.md` | 质检：残留排版标记、疑似漏译、术语偏差、页数和书签，以及抽样页截图 |
+| `zh.pdf` | Chinese edition: original page size, generated table of contents with page numbers, three-level bookmarks, the original embedded figures |
+| `bi.pdf` | Bilingual edition, paragraph by paragraph (source in grey above, Chinese below) |
+| `zh.md` | The translation as clean Markdown, ready for a knowledge base |
+| `qa/report.md` | Quality report: leftover markup in the PDF, paragraphs that look untranslated, glossary deviations, page and bookmark counts, sample page screenshots |
 
-## 数据不入库
+## How it differs from in-place PDF translators
 
-代码仓库只放通用代码。原文、配置、术语表、缓存、输出都放在**仓库之外的数据工作区**：
+Tools such as BabelDOC / PDFMathTranslate keep the original page layout and replace text in place. doctrans takes the other route: it rebuilds the document.
+
+- **A book you can read from start to finish**: reflowed text, a real table of contents, bookmarks, a bilingual edition.
+- **Markdown as a first-class output** for search and knowledge bases.
+- **Glossary from the book's own index**: index entries are extracted and translated once, then enforced in every paragraph.
+- **A QA report after every run**, so you know where to look instead of proofreading 1000 pages.
+- **Privacy as a hard constraint**, enforced by tests: parsing refuses to run unless MinerU is in local mode with telemetry off, and only one module in the code base is allowed to open a network connection (to the model endpoint you configure).
+
+Use it only for documents you have the right to process: your own material, vendor documentation, books you bought.
+
+## Your data never enters the repository
+
+The repository holds code only. Sources, configs, glossaries, caches and outputs live in a **separate data workspace**:
 
 ```
 ~/doctrans-data/
-  inbox/      原文 PDF
-  configs/    每份文档一个 .toml（doctrans inspect 生成草稿）
-  glossary/   术语表 CSV
-  work/       输出和缓存
+  inbox/      source PDFs
+  configs/    one .toml per document (drafted by `doctrans inspect`)
+  glossary/   glossary CSVs
+  work/       outputs and caches
 ```
 
-仓库自带三道防线：
+Three guards keep it that way: a whitelist `.gitignore`, a pre-commit hook that rejects documents, images, caches and large files, and an optional local denylist of sensitive strings. CI repeats the check on every push.
 
-1. `.gitignore` 白名单：默认忽略一切，只放行代码目录。
-2. 提交前检查（`.githooks/pre-commit`）：拒绝 PDF、Office 文档、图片、缓存、超过 300KB 的文件，以及 `examples/` 以外的配置和术语表。
-3. `.git/info/denylist`（不入库）：每行一个敏感字符串（书名、作者、客户名等），提交内容命中就拒绝。
-
-另外，MinerU 未锁定为本地模式或未关闭遥测时，解析步骤会直接拒绝运行。
-
-## 安装（Linux / WSL2；macOS 同理）
+## Install (Linux / WSL2 / macOS)
 
 ```bash
-git clone <本仓库> && cd doctrans
+git clone <this repo> && cd doctrans
 git config core.hooksPath .githooks
 uv venv --python 3.12 .venv && uv pip install --python .venv/bin/python -e ".[test]"
 ```
 
-- **MinerU 4.x** 装成独立工具（`uv tool install --python 3.12 mineru`），然后锁定本地模式：
-  `mineru config set parse_server.local.mode managed`、`mineru telemetry disable`、`mineru-kit models download --tier standard`。
-  `~/.local/bin` 不在 PATH 时，在配置里用 `[mineru] bin` 写绝对路径。
-- **模型服务**：Ollama（Windows/macOS/Linux 均可），推荐 27B 级模型。程序会关闭思考模式。
-- **字体**：WSL/Windows 自动用微软雅黑（按文件声明，粗体用 `msyhbd.ttc`）；macOS/Linux 回退到苹方、Noto Sans CJK 等字体族名，也可在配置里指定字体文件。
-- macOS 需先 `brew install pango`（WeasyPrint 依赖）。
+- **MinerU 4.x** as a standalone tool: `uv tool install --python 3.12 mineru`, then lock it to local mode:
+  `mineru config set parse_server.local.mode managed`, `mineru telemetry disable`, `mineru-kit models download --tier standard`.
+- **Model server**: Ollama on Windows, macOS or Linux. A 27B-class model is recommended (about 16 GB of VRAM); smaller models work with lower quality. Thinking mode is switched off by doctrans.
+- **Fonts**: Microsoft YaHei on WSL/Windows, PingFang or Noto Sans CJK on macOS/Linux, or set font files in the config.
+- macOS: `brew install pango` first (needed by WeasyPrint).
+- Native Windows: the test suite passes in CI, but WSL2 is the recommended setup.
 
-检查环境：`doctrans doctor configs/xxx.toml`
+Check the environment: `doctrans doctor configs/xxx.toml`
 
-## 使用
+### Model server on another machine
+
+The translation model does not have to run where doctrans runs. A common setup is to parse and typeset on a laptop or mini PC and send translation requests to a GPU machine on the same network. One line in the config:
+
+```toml
+[llm]
+url = "http://192.168.1.50:11434/v1/chat/completions"   # address of that machine
+```
+
+Ollama on that machine must listen on the LAN (`OLLAMA_HOST=0.0.0.0`) and port 11434 must be open in its firewall. Document text then travels unencrypted across your network, so only point this at a machine you control. Parsing (MinerU) always runs locally on the machine running doctrans.
+
+## Usage
 
 ```bash
 cd ~/doctrans-data
-doctrans inspect inbox/*.pdf                       # 1. 体检，生成 configs/<名>.toml 草稿
-#    核对草稿：页码范围（原目录、索引、简明目录已跳过）、domain、章节词
-doctrans glossary configs/xxx.toml 1035-1052 -o glossary/xxx/index.csv   # 2. 可选：从书后索引生成术语表
-#    另建 glossary/xxx/manual.csv 写核心术语（文件名排序在前的优先）
-doctrans run configs/xxx.toml                      # 3. 先把 pages 改成一章试跑，满意后改回全书
-doctrans run configs/*.toml                        # 4. 批量：逐份排队，一份失败不影响其它
-doctrans render configs/xxx.toml                   # 改了样式后只重排版（约 1–2 分钟，不调模型）
+doctrans inspect inbox/*.pdf                # 1. inspect, write a draft configs/<name>.toml
+#    review the draft: page ranges (original TOC and index are skipped), domain, chapter words
+doctrans glossary configs/xxx.toml 1035-1052 -o glossary/xxx/index.csv   # 2. optional: glossary from the index pages
+doctrans run configs/xxx.toml               # 3. try one chapter first, then the whole book
+doctrans run configs/*.toml                 # 4. batch: documents are queued, one failure does not stop the rest
+doctrans render configs/xxx.toml            # re-typeset only after style changes (1-3 minutes, no model calls)
 ```
 
-长任务放后台：`setsid nohup doctrans run configs/*.toml > batch.log 2>&1 &`。中断后重跑同一命令即可续上（解析结果、图片、逐段译文都有缓存）。
+Long runs in the background: `setsid nohup doctrans run configs/*.toml > batch.log 2>&1 &`. If a run is interrupted, start the same command again: parse results, images and every translated paragraph are cached.
 
-配置字段见 [`examples/example.toml`](examples/example.toml)；术语表格式见 [`examples/glossary_example.csv`](examples/glossary_example.csv)（列 `source,target,tgt_lng`，UTF-8 带 BOM）。
+Config fields: [`examples/example.toml`](examples/example.toml). Glossary format: [`examples/glossary_example.csv`](examples/glossary_example.csv) (columns `source,target,tgt_lng`, UTF-8 with BOM).
 
-文档：
+## Documents it has been run on
 
-- [操作手册](docs/manual.md)：安装、日常操作、排查、升级、离线迁移。
-- [依赖清单与升级流程](docs/dependencies.md)：依赖了什么、锁定在哪个版本、出安全问题怎么当天修。
-- [参与贡献](CONTRIBUTING.md)：三条不可变的原则，哪些代码可以直接改、哪些要先讨论。
-- [安全策略](SECURITY.md)、[发布规划](docs/roadmap.md)。
+| Kind | Language | Pages | Heading detection |
+|---|---|---|---|
+| Technical book with numbered sections | German | ~1000 | section numbers |
+| Technical book with unnumbered sections and many code listings | English | ~350 | PDF bookmarks |
+| Publicly available vendor administration guide | English | ~280 | single root bookmark, chapters titled by bare numbers |
 
-## 已知局限
+No document or translation is included in this repository. To reproduce a run yourself, use documentation a vendor publishes openly, for example the SAP Business One administrator's guide on the SAP Help Portal: [`examples/public-admin-guide.toml`](examples/public-admin-guide.toml) contains the download address and a ready-to-use config.
 
-- 截图里的界面文字保持原文；页码与原书不对应。
-- 标题层级靠编号（`3.1`、`3.1.1`）或 PDF 书签确定。两者都没有的 PDF 需要扩展 `structure.py`。
-- 代码块原样保留、不翻译；表格识别偶有缺漏，数据表格请对照原文。
-- 只处理 PDF。DOCX/PPTX/XLSX 应直接改原文件中的文字（python-docx、python-pptx、openpyxl），计划另做。
+## Speed
 
-## 规模参考
+A book of about 1000 pages on an RTX 4080 (16 GB) with a 27B model: parsing about 30 minutes, translation about 6 hours, typesetting about 1.5 minutes.
 
-约 1000 页的书（RTX 4080 16GB，27B 模型）：解析约半小时，翻译约 6 小时，排版约 1.5 分钟。
+## Known limitations
 
-## 许可证
+- Output language is Simplified Chinese only.
+- Text inside screenshots stays untranslated; page numbers do not match the original.
+- Heading levels come from section numbers (`3.1`, `3.1.1`) or PDF bookmarks. PDFs with neither need an extension of `structure.py`.
+- Code blocks are kept verbatim; tables split across pages become two tables.
+- Scanned PDFs, two-column layouts and formula-heavy documents are untested.
+- PDF only.
 
-AGPL-3.0（依赖的 PyMuPDF、MinerU 为 AGPL）。
+## Documentation (Chinese)
+
+- [Operations manual](docs/manual.md): install, daily use, troubleshooting, upgrades, offline migration.
+- [Dependencies and upgrade procedures](docs/dependencies.md), [Security policy](SECURITY.md).
+- [Contributing](CONTRIBUTING.md): three non-negotiable rules, and which parts of the code are open for direct changes.
+- [Roadmap](docs/roadmap.md).
+
+## License
+
+AGPL-3.0, because PyMuPDF and MinerU are AGPL. Using the tool on your own machine without distributing it puts no obligations on you.

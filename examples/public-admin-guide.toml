@@ -1,0 +1,33 @@
+# 可复现的示例：用厂商公开发布的手册跑一遍完整流程。
+# A reproducible example: run the whole pipeline on documentation a vendor publishes openly.
+#
+# 文档 / Document: SAP Business One administrator's guide (classification "PUBLIC"), SAP Help Portal
+#   https://help.sap.com/doc/f971ebb2d51940f597f9e746d5aa019b/10.0_SP_2608/en-US/9a2e1e4e14b3486099852acf7a8bcd84.pdf
+#
+# 该文档的版权属于 SAP。本仓库不包含它，也不包含它的译文；请自行下载，译文仅供自己使用，不要再分发。
+# The document is copyrighted by SAP. Neither it nor any translation of it is part of this repository;
+# download it yourself and keep the translation for your own use.
+#
+# 用法 / Usage:
+#   1. 下载 PDF 存为 ~/doctrans-data/inbox/b1-admin.pdf
+#   2. 把本文件复制到 ~/doctrans-data/configs/b1-admin.toml
+#   3. 先试一章：把 pages 改成 "21-31"，运行 doctrans run configs/b1-admin.toml；满意后改回下面的范围
+#
+# 页码范围针对 2026-08 版（282 页）。SAP 更新文档后页数会变，先用 doctrans inspect 重新核对。
+input = "../inbox/b1-admin.pdf"
+output = "../work/b1-admin"
+pages = "1,7,8-20,21-280,281-282"   # 跳过原目录（2-6 页），其余全部翻译，含修订历史和法律声明
+source_lang = "English"
+domain = "SAP Business One administration"
+ui_labels = "both"                   # 界面名称译成「中文 (English)」，中英文界面都能对上
+glossaries = ["../glossary/b1-admin/*.csv"]   # 这份文档没有索引；可以手写一份核心术语表，没有也能跑
+
+[structure]
+chapter_words = []                   # 章名直接以编号开头（"5 Installing …"），没有 Chapter 这类词
+figure_word = "Figure"
+headings = "bookmarks"               # 小节层级取自 PDF 书签
+
+[llm]
+model = "qwen3.8:27b"
+
+# 规模参考（RTX 4080 16GB）：解析约 15 分钟，翻译约 2 小时，成品约 210 页。
