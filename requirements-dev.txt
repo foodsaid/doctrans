@@ -30,7 +30,7 @@ pydyf==0.13.0
     # via weasyprint
 pygments==2.21.0
     # via pytest
-pymupdf==1.25.2
+pymupdf==2.1
     # via
     #   -c /tmp/claude-1000/-home-b-pdf/fbc98384-7045-48d3-af79-b038880e8f6b/scratchpad/tested.txt
     #   doctrans (pyproject.toml)
