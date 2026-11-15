@@ -6,6 +6,10 @@ updates:
       interval: weekly
       day: monday
     open-pull-requests-limit: 5
+    ignore:
+      # 2.x 是大改版，要按 docs/dependencies.md 第 4 节人工验证后再放开；安全更新不受此限制
+      - dependency-name: pymupdf
+        update-types: ["version-update:semver-major"]
     groups:
       python-deps:          # 例行版本更新合并成一个 PR；安全更新不受分组影响，单独、立即开
         patterns: ["*"]
